@@ -1,0 +1,43 @@
+﻿using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
+
+namespace Elara.API.Exceptions
+{
+    public sealed class GlobalExceptionHandler : IExceptionHandler
+    {
+        private readonly IProblemDetailsService problemDetails;
+        public GlobalExceptionHandler(IProblemDetailsService problemDetails) => this.problemDetails = problemDetails;
+
+        
+        public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken cancellationToken)
+        {
+            var (status, title) = exception switch
+            {
+                NotFoundException => (StatusCodes.Status404NotFound, "Resource Not Found"),
+                ValidationException => (StatusCodes.Status400BadRequest, "validation Error"),
+                BadRequestException => (StatusCodes.Status400BadRequest, "Bad Request"),
+                UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "UnAuthorized"),
+                ConflictException => (StatusCodes.Status409Conflict, "Conflict"),
+                _ => (StatusCodes.Status500InternalServerError, "Internal Server Error"),
+            };
+
+            context.Response.StatusCode = status;
+            var problem = new ProblemDetails
+            {
+                Status = status,
+                Title = title,
+                Detail = context.RequestServices.GetRequiredService<IHostEnvironment>().IsDevelopment() ? exception.Message : null,
+                Instance = context.Request.Path
+            };
+
+            await problemDetails.WriteAsync(new ProblemDetailsContext
+            {
+                HttpContext = context,
+                ProblemDetails = problem,
+            });
+            return true;
+        }
+        
+    }
+}
