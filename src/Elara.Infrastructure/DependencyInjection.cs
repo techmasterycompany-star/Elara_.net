@@ -1,4 +1,6 @@
-﻿using Elara.Infrastructure.Data;
+﻿using Elara.Application.Interfaces.Repository;
+using Elara.Infrastructure.Data;
+using Elara.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,11 +16,11 @@ namespace Elara.Infrastructure
             services.AddDbContext<AppDbContext>(options =>
             {
                 options.UseSqlServer(
-                    configuration.GetConnectionString(
-                        "DefaultConnection"));
+                    configuration.GetConnectionString("DefaultConnection"));
             });
 
-            
+            services.AddScoped<DbSeeder>();
+            services.AddScoped<IUserRepository, UserRepository>();
 
             return services;
         }
