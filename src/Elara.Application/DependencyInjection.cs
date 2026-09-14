@@ -1,4 +1,7 @@
-﻿using FluentValidation;
+﻿using AutoMapper.Internal;
+using Elara.Application.Interfaces.Service;
+using Elara.Application.Services;
+using FluentValidation;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -11,6 +14,10 @@ namespace Elara.Application
         {
             services.AddValidatorsFromAssembly(
                 typeof(DependencyInjection).Assembly);
+
+            services.AddAutoMapper(typeof(DependencyInjection).Assembly);
+
+            services.AddScoped<IUserService, UserService>();
 
             return services;
         }

@@ -1,4 +1,4 @@
-﻿namespace Elara.API.Exceptions
+﻿namespace Elara.Application.Exceptions
 {
     public class BadRequestException : Exception
     {
