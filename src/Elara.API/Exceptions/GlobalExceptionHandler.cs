@@ -10,7 +10,7 @@ namespace Elara.API.Exceptions
         private readonly IProblemDetailsService problemDetails;
         public GlobalExceptionHandler(IProblemDetailsService problemDetails) => this.problemDetails = problemDetails;
 
-        
+
         public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken cancellationToken)
         {
             var (status, title) = exception switch
@@ -32,13 +32,20 @@ namespace Elara.API.Exceptions
                 Instance = context.Request.Path
             };
 
-            await problemDetails.WriteAsync(new ProblemDetailsContext
+            var response = new ErrorResponse
             {
-                HttpContext = context,
-                ProblemDetails = problem,
-            });
+                Success = false,
+                Error = problem
+            };
+
+            context.Response.ContentType = "application/json";
+
+            await context.Response.WriteAsJsonAsync(
+                response,
+                cancellationToken);
+
             return true;
         }
-        
+
     }
 }
