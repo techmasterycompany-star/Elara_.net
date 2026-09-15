@@ -21,6 +21,7 @@ namespace Elara.Infrastructure
 
             services.AddScoped<DbSeeder>();
             services.AddScoped<IUserRepository, UserRepository>();
+            services.AddScoped<IInventoryRepository, InventoryRepository>();
 
             return services;
         }

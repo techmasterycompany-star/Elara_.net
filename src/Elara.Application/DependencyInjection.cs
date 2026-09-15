@@ -18,6 +18,7 @@ namespace Elara.Application
             services.AddAutoMapper(typeof(DependencyInjection).Assembly);
 
             services.AddScoped<IUserService, UserService>();
+            services.AddScoped<IInventoryService, InventoryService>();
 
             return services;
         }
