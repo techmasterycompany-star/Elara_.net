@@ -13,5 +13,14 @@ namespace Elara.Application.DTOs.Common
                 Data = data
             };
         }
+
+        public static ApiResponse<T> FailResponse(T data)
+        {
+            return new ApiResponse<T>
+            {
+                Success = false,
+                Data = data
+            };
+        }
     }
 }

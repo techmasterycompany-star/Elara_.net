@@ -15,10 +15,13 @@ namespace Elara.API.Exceptions
         {
             var (status, title) = exception switch
             {
+                KeyNotFoundException => (StatusCodes.Status404NotFound, "Resource Not Found"),
                 NotFoundException => (StatusCodes.Status404NotFound, "Resource Not Found"),
-                ValidationException => (StatusCodes.Status400BadRequest, "validation Error"),
+                ValidationException => (StatusCodes.Status400BadRequest, "Validation Error"),
+                ArgumentException => (StatusCodes.Status400BadRequest, "Bad Request"),
                 BadRequestException => (StatusCodes.Status400BadRequest, "Bad Request"),
-                UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "UnAuthorized"),
+                UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "Unauthorized"),
+                InvalidOperationException => (StatusCodes.Status409Conflict, "Conflict"),
                 ConflictException => (StatusCodes.Status409Conflict, "Conflict"),
                 _ => (StatusCodes.Status500InternalServerError, "Internal Server Error"),
             };
