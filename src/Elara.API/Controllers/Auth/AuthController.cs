@@ -35,14 +35,6 @@ namespace Elara.API.Controllers.Auth
             return Ok(ApiResponse<AuthResponse>.SuccessResponse(result));
         }
 
-        //[HttpPost("login/phone")]
-        //[EnableRateLimiting("auth-sensitive")]
-        //public async Task<IActionResult> LoginWithPhone([FromBody] PhoneLoginRequest request)
-        //{
-        //    var result = await service.LoginWithPhoneAsync(request);
-        //    return Ok(ApiResponse<AuthResponse>.SuccessResponse(result));
-        //}
-
         [HttpPost("login/google")]
         [EnableRateLimiting("auth-sensitive")]
         public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest request)
