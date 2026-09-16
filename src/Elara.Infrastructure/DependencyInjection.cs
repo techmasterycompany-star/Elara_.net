@@ -1,5 +1,7 @@
 ﻿using Elara.Application.Interfaces.Repository;
+using Elara.Application.Interfaces.Repository.Auth;
 using Elara.Application.Interfaces.Service;
+using Elara.Application.Interfaces.Service.Auth;
 using Elara.Application.Services;
 using Elara.Infrastructure.Data;
 using Elara.Infrastructure.Repositories;

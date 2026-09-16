@@ -269,7 +269,8 @@ namespace Elara.Application.Services.Auth
 
         private async Task<AuthResponse> GenerateAuthResponseAsync(User user)
         {
-            var accessToken = tokenService.GenerateAccessToken(user.Id, user.Email);
+            var roles = user.UserRoles.Select(x => x.Role!.Name).ToList();
+            var accessToken = tokenService.GenerateAccessToken(user.Id, user.Email, roles);
             var refreshToken = tokenService.GenerateRefreshToken();
 
             await refreshTokenRepository.AddAsync(new RefreshToken

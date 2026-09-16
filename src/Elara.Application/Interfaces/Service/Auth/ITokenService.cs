@@ -5,7 +5,7 @@ namespace Elara.Application.Interfaces.Service.Auth
 {
     public interface ITokenService
     {
-        string GenerateAccessToken(long userId, string email);
+        string GenerateAccessToken(long userId, string email, List<string> roles);
         string GenerateRefreshToken();
         ClaimsPrincipal? GetPrincipalFromExpiredToken(string token);
     }

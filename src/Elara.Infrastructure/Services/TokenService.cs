@@ -14,7 +14,7 @@ namespace Elara.Infrastructure.Services
         public TokenService(IConfiguration configuration) => this.configuration = configuration;
        
 
-        public string GenerateAccessToken(long userId, string email)
+        public string GenerateAccessToken(long userId, string email, List<string> roles)
         {
             var key = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(configuration["Jwt:Key"]!));
@@ -25,6 +25,9 @@ namespace Elara.Infrastructure.Services
                 new(ClaimTypes.Email, email),
                 new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
+
+            foreach (var role in roles)
+                claims.Add(new Claim(ClaimTypes.Role, role));
 
             var token = new JwtSecurityToken(
                 issuer: configuration["Jwt:Issuer"],
