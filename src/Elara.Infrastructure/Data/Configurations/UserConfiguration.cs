@@ -25,6 +25,10 @@ namespace Elara.Infrastructure.Data.Configurations
                 .IsRequired()
                 .HasMaxLength(20);
 
+            builder.HasIndex(u => u.PhoneNumber)
+                .IsUnique()
+                .HasFilter("[PhoneNumber] != ''");
+
             builder.Property(u => u.PasswordHash)
                 .IsRequired();
 

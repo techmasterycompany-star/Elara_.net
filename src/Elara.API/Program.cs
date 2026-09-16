@@ -1,6 +1,7 @@
 using DotNetEnv;
 using Elara.API.Exceptions;
 using Elara.Application;
+using Elara.Application.Interfaces.Repository.Auth;
 using Elara.Infrastructure;
 using Elara.Infrastructure.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -11,6 +12,7 @@ using Microsoft.OpenApi;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using System.Text.Json.Serialization;
+using Elara.API.Filters;
 
 // .ENV
 Env.Load();
@@ -25,11 +27,10 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplication(builder.Configuration);
 
-builder.Services.AddControllers();
-
-
-// Enums Serialization
-builder.Services.AddControllers().AddJsonOptions(options =>
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<FluentValidationActionFilter>();
+}).AddJsonOptions(options =>
 {
     options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
@@ -78,19 +79,46 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
     };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnTokenValidated = async context =>
+        {
+            var jti = context.Principal?.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
+            if (!string.IsNullOrEmpty(jti))
+            {
+                var revokedRepo = context.HttpContext.RequestServices
+                    .GetRequiredService<IRevokedTokenRepository>();
+                if (await revokedRepo.IsRevokedAsync(jti))
+                {
+                    context.Fail("Token has been revoked.");
+                }
+            }
+        }
+    };
 });
 
 builder.Services.AddAuthorization();
 
-// Rate Limiting => 5 Requests in 1 minute
 builder.Services.AddRateLimiter(options =>
 {
-    options.AddFixedWindowLimiter("fixed", limiterOptions =>
+    // for (login, register, refresh)
+    options.AddFixedWindowLimiter("auth-sensitive", limiterOptions =>
     {
         limiterOptions.PermitLimit = 5;
         limiterOptions.Window = TimeSpan.FromMinutes(1);
         limiterOptions.QueueLimit = 0;
     });
+
+    // for read-only endpoints
+    options.AddFixedWindowLimiter("auth-relaxed", limiterOptions =>
+    {
+        limiterOptions.PermitLimit = 20;
+        limiterOptions.Window = TimeSpan.FromMinutes(1);
+        limiterOptions.QueueLimit = 0;
+    });
+
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 
 // Cors
@@ -125,6 +153,7 @@ if (app.Environment.IsDevelopment())
 app.UseExceptionHandler();
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 app.UseCors("Frontend");
 
 app.UseAuthentication();

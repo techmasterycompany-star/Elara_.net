@@ -10,15 +10,18 @@ namespace Elara.API.Exceptions
         private readonly IProblemDetailsService problemDetails;
         public GlobalExceptionHandler(IProblemDetailsService problemDetails) => this.problemDetails = problemDetails;
 
-        
+
         public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken cancellationToken)
         {
             var (status, title) = exception switch
             {
+                KeyNotFoundException => (StatusCodes.Status404NotFound, "Resource Not Found"),
                 NotFoundException => (StatusCodes.Status404NotFound, "Resource Not Found"),
-                ValidationException => (StatusCodes.Status400BadRequest, "validation Error"),
+                ValidationException => (StatusCodes.Status400BadRequest, "Validation Error"),
+                ArgumentException => (StatusCodes.Status400BadRequest, "Bad Request"),
                 BadRequestException => (StatusCodes.Status400BadRequest, "Bad Request"),
-                UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "UnAuthorized"),
+                UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "Unauthorized"),
+                InvalidOperationException => (StatusCodes.Status409Conflict, "Conflict"),
                 ConflictException => (StatusCodes.Status409Conflict, "Conflict"),
                 _ => (StatusCodes.Status500InternalServerError, "Internal Server Error"),
             };
@@ -32,13 +35,20 @@ namespace Elara.API.Exceptions
                 Instance = context.Request.Path
             };
 
-            await problemDetails.WriteAsync(new ProblemDetailsContext
+            var response = new ErrorResponse
             {
-                HttpContext = context,
-                ProblemDetails = problem,
-            });
+                Success = false,
+                Error = problem
+            };
+
+            context.Response.ContentType = "application/json";
+
+            await context.Response.WriteAsJsonAsync(
+                response,
+                cancellationToken);
+
             return true;
         }
-        
+
     }
 }

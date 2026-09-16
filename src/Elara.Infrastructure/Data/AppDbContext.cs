@@ -1,5 +1,6 @@
 ﻿using Elara.Domain.Common;
 using Elara.Domain.Entities;
+using Elara.Domain.Entities.Auth;
 using Microsoft.EntityFrameworkCore;
 
 namespace Elara.Infrastructure.Data
@@ -36,7 +37,11 @@ namespace Elara.Infrastructure.Data
         public DbSet<Shipment> Shipments => Set<Shipment>();
         public DbSet<ShipmentItem> ShipmentItems => Set<ShipmentItem>();
         public DbSet<Notification> Notifications => Set<Notification>();
-        public DbSet<Transaction> LoyaltyTransactions => Set<Transaction>();
+        public DbSet<Transaction> Transactions => Set<Transaction>();
+        public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+        public DbSet<RevokedToken> RevokedTokens => Set<RevokedToken>();
+        public DbSet<EmailConfirmation> EmailConfirmations => Set<EmailConfirmation>();
+        public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -77,7 +82,12 @@ namespace Elara.Infrastructure.Data
             modelBuilder.Entity<Shipment>()
                 .HasQueryFilter(x => !x.IsDeleted);
 
-        
+            modelBuilder.Entity<Role>().HasData(
+                new Role { Id = 1, Name = Elara.Domain.Enums.Role.Admin.ToString() },
+                new Role { Id = 2, Name = Elara.Domain.Enums.Role.Seller.ToString() },
+                new Role { Id = 3, Name = Elara.Domain.Enums.Role.Customer.ToString() }
+            );
+
             base.OnModelCreating(modelBuilder);
         }
 
