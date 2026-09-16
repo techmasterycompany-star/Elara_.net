@@ -21,6 +21,7 @@ namespace Elara.Application
 
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IInventoryService, InventoryService>();
+            services.AddScoped<ICartService, CartService>();
 
             return services;
         }

@@ -3,11 +3,13 @@ using Elara.Application.DTOs.Common;
 using Elara.Application.DTOs.Inventory;
 using Elara.Application.Interfaces.Service;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Elara.API.Controllers.Seller
 {
     [Route("api/v1/sellers/me")]
     [ApiController]
+    [Authorize(Roles="Seller")]
     public class SellerInventoryController : ControllerBase
     {
         private readonly IInventoryService _inventoryService;
