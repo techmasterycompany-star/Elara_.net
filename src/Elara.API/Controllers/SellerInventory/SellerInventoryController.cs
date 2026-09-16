@@ -7,9 +7,9 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Elara.API.Controllers.Seller
 {
+    [Authorize(Roles = "Seller")]
     [Route("api/v1/sellers/me")]
     [ApiController]
-    [Authorize(Roles="Seller")]
     public class SellerInventoryController : ControllerBase
     {
         private readonly IInventoryService _inventoryService;

@@ -1,11 +1,13 @@
-﻿using Elara.Application.DTOs.User;
+﻿using Elara.Application.DTOs.Common;
+using Elara.Application.DTOs.User;
 using Elara.Application.Interfaces.Service;
-using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RoleEnum = Elara.Domain.Enums.Role;
 
 namespace Elara.API.Controllers.Admin
 {
+    [Authorize(Roles = "Admin")]
     [Route("api/v1/admin/users")]
     [ApiController]
     public class AdminUsersController : ControllerBase
@@ -21,42 +23,42 @@ namespace Elara.API.Controllers.Admin
         public async Task<IActionResult> GetAllRoles()
         {
             var roles = await _userService.GetAllRolesAsync();
-            return Ok(roles);
+            return Ok(ApiResponse<IEnumerable<RoleDto>>.SuccessResponse(roles));
         }
 
         [HttpGet]
         public async Task<IActionResult> GetAllUsers([FromQuery] GetUsersRequest request)
         {
             var users = await _userService.GetAllUsersAsync(request);
-            return Ok(users);
+            return Ok(ApiResponse<PaginatedResponse<UserListDto>>.SuccessResponse(users));
         }
 
-        [HttpGet("{userId}")]
+        [HttpGet("{userId:long}")]
         public async Task<IActionResult> GetUserById(long userId)
         {
             var user = await _userService.GetUserByIdAsync(userId);
-            return Ok(user);
+            return Ok(ApiResponse<UserDetailsDto>.SuccessResponse(user));
         }
 
-        [HttpPut("{userId}/status")]
+        [HttpPut("{userId:long}/status")]
         public async Task<IActionResult> UpdateUserStatus(long userId, [FromBody] UpdateUserStatusDto updateUserStatusDto)
         {
             await _userService.UpdateUserStatus(userId, updateUserStatusDto.IsActive);
-            return NoContent();
+            return StatusCode(204, ApiResponse<string>.SuccessResponse("User status updated successfully."));
         }
 
-        [HttpDelete("{userId}")]
+        [HttpDelete("{userId:long}")]
         public async Task<IActionResult> DeleteUser(long userId)
         {
             await _userService.DeleteUser(userId);
-            return NoContent();
+            return StatusCode(204, ApiResponse<string>.SuccessResponse("User deleted successfully."));
         }
 
-        [HttpPut("{userId}/roles")]
+        [HttpPut("{userId:long}/roles")]
         public async Task<IActionResult> AssignRolesToUser(long userId, [FromBody] List<RoleEnum> roles)
         {
             await _userService.AssignRolesToUserAsync(userId, roles);
-            return NoContent();
+            return StatusCode(204, ApiResponse<string>.SuccessResponse("Roles assigned successfully."));
         }
     }
 }

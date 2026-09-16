@@ -1,6 +1,8 @@
 ﻿using Elara.Application.Interfaces.Repository;
 using Elara.Application.Interfaces.Repository.Auth;
+using Elara.Application.Interfaces.Service;
 using Elara.Application.Interfaces.Service.Auth;
+using Elara.Application.Services;
 using Elara.Infrastructure.Data;
 using Elara.Infrastructure.Repositories;
 using Elara.Infrastructure.Repositories.Auth;
@@ -32,6 +34,8 @@ namespace Elara.Infrastructure
             services.AddScoped<IRoleRepository, RoleRepository>();
             services.AddScoped<IInventoryRepository, InventoryRepository>();
             services.AddScoped<ICartRepository, CartRepository>();
+            services.AddScoped<IOrderRepository, OrderRepository>();
+            services.AddScoped<IShipmentRepository, ShipmentRepository>();
 
             return services;
         }
