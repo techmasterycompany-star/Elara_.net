@@ -31,6 +31,7 @@ namespace Elara.Infrastructure
             services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
             services.AddScoped<IRoleRepository, RoleRepository>();
             services.AddScoped<IInventoryRepository, InventoryRepository>();
+            services.AddScoped<ICartRepository, CartRepository>();
 
             return services;
         }
