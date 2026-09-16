@@ -6,7 +6,6 @@ namespace Elara.Application.Interfaces.Service.Auth
     {
         Task<AuthResponse?> RegisterAsync(RegisterRequest request);
         Task<AuthResponse> LoginAsync(LoginRequest request);
-        Task<AuthResponse> LoginWithPhoneAsync(PhoneLoginRequest request);
         Task<AuthResponse> GoogleLoginAsync(GoogleLoginRequest request);
         Task<AuthResponse> RefreshTokenAsync(RefreshTokenRequest request);
         Task RevokeTokenAsync(string refreshToken , string? reason = null);

@@ -128,20 +128,6 @@ namespace Elara.Application.Services.Auth
             return await GenerateAuthResponseAsync(user);
         }
 
-        public async Task<AuthResponse> LoginWithPhoneAsync(PhoneLoginRequest request)
-        {
-            var user = await repo.GetByPhoneNumberAsync(request.PhoneNumber)
-                ?? throw new UnauthorizedAccessException("Invalid phone number or OTP.");
-
-            if (!user.IsActive)
-                throw new UnauthorizedAccessException("Account is deactivated.");
-
-            if (!user.EmailConfirmed)
-                throw new UnauthorizedAccessException("Please confirm your email first.");
-
-            return await GenerateAuthResponseAsync(user);
-        }
-
         public async Task LogoutAsync(long userId, string? jti = null)
         {
             if (!string.IsNullOrEmpty(jti))
