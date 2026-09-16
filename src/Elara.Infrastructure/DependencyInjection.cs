@@ -1,4 +1,6 @@
 ﻿using Elara.Application.Interfaces.Repository;
+using Elara.Application.Interfaces.Service;
+using Elara.Application.Services;
 using Elara.Infrastructure.Data;
 using Elara.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +23,8 @@ namespace Elara.Infrastructure
 
             services.AddScoped<DbSeeder>();
             services.AddScoped<IUserRepository, UserRepository>();
+            services.AddScoped<IOrderRepository, OrderRepository>();
+            services.AddScoped<IShipmentRepository, ShipmentRepository>();
 
             return services;
         }

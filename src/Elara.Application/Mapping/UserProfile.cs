@@ -4,7 +4,7 @@ using Elara.Domain.Entities;
 
 namespace Elara.Application.Mapping
 {
-    public class UserProfile : Profile
+    public partial class UserProfile : Profile
     {
         public UserProfile()
         {

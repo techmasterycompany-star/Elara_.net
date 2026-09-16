@@ -31,28 +31,28 @@ namespace Elara.API.Controllers.Admin
             return Ok(users);
         }
 
-        [HttpGet("{userId}")]
+        [HttpGet("{userId:long}")]
         public async Task<IActionResult> GetUserById(long userId)
         {
             var user = await _userService.GetUserByIdAsync(userId);
             return Ok(user);
         }
 
-        [HttpPut("{userId}/status")]
+        [HttpPut("{userId:long}/status")]
         public async Task<IActionResult> UpdateUserStatus(long userId, [FromBody] UpdateUserStatusDto updateUserStatusDto)
         {
             await _userService.UpdateUserStatus(userId, updateUserStatusDto.IsActive);
             return NoContent();
         }
 
-        [HttpDelete("{userId}")]
+        [HttpDelete("{userId:long}")]
         public async Task<IActionResult> DeleteUser(long userId)
         {
             await _userService.DeleteUser(userId);
             return NoContent();
         }
 
-        [HttpPut("{userId}/roles")]
+        [HttpPut("{userId:long}/roles")]
         public async Task<IActionResult> AssignRolesToUser(long userId, [FromBody] List<RoleEnum> roles)
         {
             await _userService.AssignRolesToUserAsync(userId, roles);
