@@ -31,10 +31,10 @@ namespace Elara.Infrastructure.Repositories
 
                 query = query.Where(o =>
                     o.Id.ToString().Contains(search) ||
-                    (o.User != null && (o.User.FullName.Contains(search) || o.User.Email.Contains(search))) ||
-                    (!string.IsNullOrEmpty(o.GuestFullName) &&  o.GuestFullName.Contains(search)) ||
-                    (!string.IsNullOrEmpty(o.GuestEmail) &&  o.GuestEmail.Contains(search)) ||
-                    (!string.IsNullOrEmpty(o.GuestPhoneNumber) &&  o.GuestPhoneNumber.Contains(search)));
+                    (o.User != null && (o.User.FullName.Contains(search, StringComparison.OrdinalIgnoreCase) || o.User.Email.Contains(search, StringComparison.OrdinalIgnoreCase))) ||
+                    (!string.IsNullOrEmpty(o.GuestFullName) &&  o.GuestFullName.Contains(search,StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(o.GuestEmail) &&  o.GuestEmail.Contains(search,StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(o.GuestPhoneNumber) &&  o.GuestPhoneNumber.Contains(search,StringComparison.OrdinalIgnoreCase)));
             }
 
             // Status

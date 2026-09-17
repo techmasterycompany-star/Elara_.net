@@ -29,9 +29,9 @@ namespace Elara.Application.Services
             return new PaginatedResponse<AdminOrderListDto>
             {
                 Data = orderDtos.ToList(),
-                TotalCount = orderDtos.Count(),
                 PageNumber = orderRequest.PageNumber,
                 Limit = orderRequest.Limit,
+                TotalCount = orderDtos.Count(),
                 TotalPages = (int)Math.Ceiling((double)orders.Count() / orderRequest.Limit)
             };
         }
