@@ -18,9 +18,12 @@ namespace Elara.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<IEnumerable<Category>> GetAllCategoriesAsync(CategoryListRequest categoryRequest)
+        public async Task<PaginationQueryResult<Category>> GetAllCategoriesAsync(CategoryListRequest categoryRequest)
         {
-            var query = _context.Categories.Where(c => c.IsDeleted == false).AsQueryable();
+            var query = _context.Categories
+                .Where(c => c.IsDeleted == false)
+                .Include(c => c.ParentCategory)
+                .AsQueryable();
 
             if (!string.IsNullOrEmpty(categoryRequest.Search))
             {
@@ -41,17 +44,24 @@ namespace Elara.Infrastructure.Repositories
                 _ => query
             };
 
+            var totalCount = await query.CountAsync();
             var skip = (categoryRequest.PageNumber - 1) * categoryRequest.Limit;
 
-            return await query
+            var items = await query
                 .Skip(skip)
                 .Take(categoryRequest.Limit)
                 .ToListAsync();
+
+            return new PaginationQueryResult<Category>
+            {
+                Items = items,
+                TotalCount = totalCount
+            };
         }
 
         public async Task<Category?> GetCategoryByIdAsync(long id)
         {
-            return await _context.Categories.FindAsync(id);
+            return await _context.Categories.Include(c => c.ParentCategory).FirstOrDefaultAsync(c => c.Id == id);
         }
 
         public async Task CreateCategoryAsync(Category category)

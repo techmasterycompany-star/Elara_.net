@@ -17,7 +17,7 @@ namespace Elara.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<IEnumerable<ShippingMethod>> GetAllShippingMethodsAsync(ShippingMethodListRequest shippingMethodRequest)
+        public async Task<PaginationQueryResult<ShippingMethod>> GetAllShippingMethodsAsync(ShippingMethodListRequest shippingMethodRequest)
         {
             var query = _context.ShippingMethods.Where(s => s.IsDeleted == false).AsQueryable();
 
@@ -43,12 +43,19 @@ namespace Elara.Infrastructure.Repositories
                 _ => query
             };
 
+            var totalCount = await query.CountAsync();
             var skip = (shippingMethodRequest.PageNumber - 1) * shippingMethodRequest.Limit;
 
-            return await query
+            var items = await query
                 .Skip(skip)
                 .Take(shippingMethodRequest.Limit)
                 .ToListAsync();
+
+            return new PaginationQueryResult<ShippingMethod>
+            {
+                Items = items,
+                TotalCount = totalCount
+            };
 
         }
 
@@ -72,7 +79,7 @@ namespace Elara.Infrastructure.Repositories
         public Task<bool> ShippingMethodNameExistsAsync(string name, long? excludeId = null)
         {
             return _context.ShippingMethods
-                .AnyAsync(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && (!excludeId.HasValue || s.Id != excludeId.Value));
+                .AnyAsync(s => s.Name.ToLower() == name.ToLower() && (!excludeId.HasValue || s.Id != excludeId.Value) );
         }
     }
 }

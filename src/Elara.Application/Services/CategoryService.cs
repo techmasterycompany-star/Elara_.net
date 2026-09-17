@@ -22,15 +22,15 @@ namespace Elara.Application.Services
         public async Task<PaginatedResponse<CategoryDto>> GetAllCategoriesAsync(CategoryListRequest categoryRequest)
         {
             var categories = await _categoryRepository.GetAllCategoriesAsync(categoryRequest);
-            var categoriesDtos = _mapper.Map<IEnumerable<CategoryDto>>(categories);
+            var categoriesDtos = _mapper.Map<IEnumerable<CategoryDto>>(categories.Items).ToList();
 
             return new PaginatedResponse<CategoryDto>
             {
                 Data = categoriesDtos,
                 PageNumber = categoryRequest.PageNumber,
                 Limit = categoryRequest.Limit,
-                TotalCount = categories.Count(),
-                TotalPages = (int)Math.Ceiling((double)categories.Count() / categoryRequest.Limit)
+                TotalCount = categories.TotalCount,
+                TotalPages = (int)Math.Ceiling((double)categories.TotalCount / categoryRequest.Limit)
             };
         }
 
@@ -44,10 +44,17 @@ namespace Elara.Application.Services
         }
         public async Task CreateCategoryAsync(CreateCategoryDto category)
         {
+            if (category.ParentCategoryId.HasValue)
+            {
+                var parentCategory = await _categoryRepository.GetCategoryByIdAsync(category.ParentCategoryId.Value);
+                if (parentCategory == null)
+                    throw new NotFoundException("Parent category not found.");
+            }
+
             var nameExists = await _categoryRepository.CategoryNameExistsAsync(category.Name);
             if (nameExists)
                 throw new ConflictException($"Category with name '{category.Name}' already exists.");
-            await _categoryRepository.CreateCategoryAsync(_mapper.Map<Domain.Entities.Category>(category));
+            await _categoryRepository.CreateCategoryAsync(_mapper.Map<Category>(category));
         }
 
         public async Task UpdateCategoryAsync(long categoryId, UpdateCategoryDto category)
@@ -56,7 +63,17 @@ namespace Elara.Application.Services
             if (existingCategory == null)
                 throw new NotFoundException($"Category not found.");
 
-            var nameExists = await _categoryRepository.CategoryNameExistsAsync(category.Name);
+            if (category.ParentCategoryId.HasValue)
+            {
+                if (category.ParentCategoryId.Value == categoryId)
+                    throw new ConflictException("Category cannot be its own parent category.");
+
+                var parentCategory = await _categoryRepository.GetCategoryByIdAsync(category.ParentCategoryId.Value);
+                if (parentCategory == null)
+                    throw new NotFoundException("Parent category not found.");
+            }
+
+            var nameExists = await _categoryRepository.CategoryNameExistsAsync(category.Name, categoryId);
             if (nameExists)
                 throw new ConflictException($"Category with name '{category.Name}' already exists.");
 

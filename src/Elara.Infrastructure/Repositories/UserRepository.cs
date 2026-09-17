@@ -1,4 +1,5 @@
-﻿using Elara.Application.DTOs.User;
+﻿using Elara.Application.DTOs.Common;
+using Elara.Application.DTOs.User;
 using Elara.Application.Interfaces.Repository;
 using Elara.Domain.Entities;
 using Elara.Infrastructure.Data;
@@ -15,7 +16,7 @@ namespace Elara.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<IEnumerable<User>> GetAllUsersAsync(GetUsersRequest request)
+        public async Task<PaginationQueryResult<User>> GetAllUsersAsync(GetUsersRequest request)
         {
             var query = _context.Users.Include(u => u.UserRoles).ThenInclude(ur => ur.Role).AsQueryable();
 
@@ -34,7 +35,18 @@ namespace Elara.Infrastructure.Repositories
             if (!string.IsNullOrWhiteSpace(request.Search))
                 query = query.Where(u => u.FullName.Contains(request.Search) || u.Email.Contains(request.Search) || u.PhoneNumber.Contains(request.Search) || u.Username.Contains(request.Search));
 
-            return await query.ToListAsync();
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .Skip((request.PageNumber - 1) * request.Limit)
+                .Take(request.Limit)
+                .ToListAsync();
+
+            return new PaginationQueryResult<User>
+            {
+                Items = items,
+                TotalCount = totalCount
+            };
         }
 
         public async Task<User?> GetUserByIdAsync(long userId)

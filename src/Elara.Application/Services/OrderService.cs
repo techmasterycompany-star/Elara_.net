@@ -24,15 +24,15 @@ namespace Elara.Application.Services
         public async Task<PaginatedResponse<AdminOrderListDto>> GetAllOrdersAsync(AdminOrderFilterDto orderRequest)
         {
             var orders = await _orderRepository.GetAllOrdersAsync(orderRequest);
-            var orderDtos = _mapper.Map<IEnumerable<AdminOrderListDto>>(orders);
+            var orderDtos = _mapper.Map<IEnumerable<AdminOrderListDto>>(orders.Items).ToList();
 
             return new PaginatedResponse<AdminOrderListDto>
             {
-                Data = orderDtos.ToList(),
+                Data = orderDtos,
                 PageNumber = orderRequest.PageNumber,
                 Limit = orderRequest.Limit,
-                TotalCount = orderDtos.Count(),
-                TotalPages = (int)Math.Ceiling((double)orders.Count() / orderRequest.Limit)
+                TotalCount = orders.TotalCount,
+                TotalPages = (int)Math.Ceiling((double)orders.TotalCount / orderRequest.Limit)
             };
         }
 
@@ -51,16 +51,16 @@ namespace Elara.Application.Services
 
             // validate business rules
             if (order.Status == updateRequest.Status) 
-                throw new ValidationException($"Order is already {updateRequest.Status}.");
+                throw new ConflictException($"Order is already {updateRequest.Status}.");
 
             if (!IsValidTransition(order.Status, updateRequest.Status))
-                throw new ValidationException($"Cannot change order status from {order.Status} to {updateRequest.Status}.");
+                throw new ConflictException($"Cannot change order status from {order.Status} to {updateRequest.Status}.");
 
             if (updateRequest.Status == OrderStatus.Delivered && order.Shipments.Any(s => s.Status != ShipmentStatus.Delivered))
-                throw new ValidationException("Order cannot be marked as delivered until all shipments are delivered.");
+                throw new ConflictException("Order cannot be marked as delivered until all shipments are delivered.");
 
             if (updateRequest.Status == OrderStatus.Shipped && order.Shipments.Any(s => s.Status == ShipmentStatus.Pending))
-                throw new ValidationException("Order cannot be marked as shipped while it has pending shipments.");
+                throw new ConflictException("Order cannot be marked as shipped while it has pending shipments.");
 
             //Update status
             order.Status = updateRequest.Status;

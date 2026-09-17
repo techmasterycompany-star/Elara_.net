@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Elara.API.Controllers.Admin
 {
-    [Authorize(Roles = "Admin")]
+    //[Authorize(Roles = "Admin")]
     [Route("api/v1/admin/categories")]
     [ApiController]
     public class AdminCategoryController : Controller

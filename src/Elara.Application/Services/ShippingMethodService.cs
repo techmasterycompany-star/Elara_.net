@@ -21,15 +21,15 @@ namespace Elara.Application.Services
         public async Task<PaginatedResponse<ShippingMethodDto>> GetAllShippingMethodsAsync(ShippingMethodListRequest shippingMethodRequest)
         {
             var shippingMethods = await _shippingMethodRepository.GetAllShippingMethodsAsync(shippingMethodRequest);
-            var shippingMethodsDtos = _mapper.Map<IEnumerable<ShippingMethodDto>>(shippingMethods);
+            var shippingMethodsDtos = _mapper.Map<IEnumerable<ShippingMethodDto>>(shippingMethods.Items).ToList();
 
             return new PaginatedResponse<ShippingMethodDto>
             {
                 Data = shippingMethodsDtos,
                 PageNumber = shippingMethodRequest.PageNumber,
                 Limit = shippingMethodRequest.Limit,
-                TotalCount = shippingMethods.Count(),
-                TotalPages = (int)Math.Ceiling((double)shippingMethods.Count() / shippingMethodRequest.Limit)
+                TotalCount = shippingMethods.TotalCount,
+                TotalPages = (int)Math.Ceiling((double)shippingMethods.TotalCount / shippingMethodRequest.Limit)
             };
         }
 
@@ -54,19 +54,20 @@ namespace Elara.Application.Services
         public async Task UpdateShippingMethodAsync(long id, UpdateShippingMethodDto shippingMethod)
         {
             var existingShippingMethod = await _shippingMethodRepository.GetShippingMethodByIdAsync(id);
+
             if (existingShippingMethod == null)
-                throw new NotFoundException($"Shipping method not found.");
-            
+                throw new NotFoundException("Shipping method not found.");
 
             var nameExists = await _shippingMethodRepository.ShippingMethodNameExistsAsync(shippingMethod.Name, id);
+
             if (nameExists)
                 throw new ConflictException($"Shipping method with name '{shippingMethod.Name}' already exists.");
-            
 
-            var updatedShippingMethod = _mapper.Map<ShippingMethod>(shippingMethod);
-            updatedShippingMethod.Id = id;
-            updatedShippingMethod.UpdatedAt = DateTime.UtcNow;
-            await _shippingMethodRepository.UpdateShippingMethodAsync(updatedShippingMethod);
+            _mapper.Map(shippingMethod, existingShippingMethod);
+
+            existingShippingMethod.UpdatedAt = DateTime.UtcNow;
+
+            await _shippingMethodRepository.UpdateShippingMethodAsync(existingShippingMethod);
         }
 
         public async Task UpdateShippingMethodStatusAsync(long id, UpdateShippingMethodStatusDto shippingMethod)

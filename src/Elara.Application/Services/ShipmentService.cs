@@ -25,15 +25,15 @@ namespace Elara.Application.Services
         public async Task<PaginatedResponse<AdminShipmentListDto>> GetAllShipmentsAsync(AdminShipmentFilterDto shipmentRequest)
         {
             var shipments = await _shipmentRepository.GetAllShipmentsAsync(shipmentRequest);
-            var shipmentDtos = _mapper.Map<IEnumerable<AdminShipmentListDto>>(shipments);
+            var shipmentDtos = _mapper.Map<IEnumerable<AdminShipmentListDto>>(shipments.Items).ToList();
 
             return new PaginatedResponse<AdminShipmentListDto>
             {
-                Data = shipmentDtos.ToList(),
-                TotalCount = shipmentDtos.Count(),
+                Data = shipmentDtos,
+                TotalCount = shipments.TotalCount,
                 PageNumber = shipmentRequest.PageNumber,
                 Limit = shipmentRequest.Limit,
-                TotalPages = (int)Math.Ceiling((double)shipments.Count() / shipmentRequest.Limit)
+                TotalPages = (int)Math.Ceiling((double)shipments.TotalCount / shipmentRequest.Limit)
             };
         }
 
@@ -69,9 +69,9 @@ namespace Elara.Application.Services
 
             // validate business rules
             if (shipment.Status == updateRequest.Status) 
-                throw new ValidationException($"Shipment is already {updateRequest.Status}.");
+                throw new ConflictException($"Shipment is already {updateRequest.Status}.");
             if (!IsValidTransition(shipment.Status, updateRequest.Status))
-                throw new ValidationException($"Cannot change shipment status from {shipment.Status} to {updateRequest.Status}.");
+                throw new ConflictException($"Cannot change shipment status from {shipment.Status} to {updateRequest.Status}.");
 
             shipment.Status = updateRequest.Status;
 
