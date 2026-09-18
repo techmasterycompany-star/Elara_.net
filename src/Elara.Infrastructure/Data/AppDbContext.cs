@@ -42,6 +42,7 @@ namespace Elara.Infrastructure.Data
         public DbSet<RevokedToken> RevokedTokens => Set<RevokedToken>();
         public DbSet<EmailConfirmation> EmailConfirmations => Set<EmailConfirmation>();
         public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+        public DbSet<SellerApplication> SellerApplications => Set<SellerApplication>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

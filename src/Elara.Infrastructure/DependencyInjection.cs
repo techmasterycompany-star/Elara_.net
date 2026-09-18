@@ -38,6 +38,8 @@ namespace Elara.Infrastructure
             services.AddScoped<IShipmentRepository, ShipmentRepository>();
             services.AddScoped<ICategoryRepository, CategoryRepository>();
             services.AddScoped<IShippingMethodRepository, ShippingMethodRepository>();
+            services.AddScoped<ISellerApplicationRepository, SellerApplicationRepository>();
+            services.AddScoped<ISellerRepository, SellerRepository>();
 
             return services;
         }

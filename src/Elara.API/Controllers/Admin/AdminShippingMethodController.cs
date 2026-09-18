@@ -1,13 +1,14 @@
 ﻿using Elara.Application.DTOs.Common;
 using Elara.Application.DTOs.ShippingMethods;
 using Elara.Application.Interfaces.Service;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Elara.API.Controllers.Admin
 {
-    //[Authorize(Roles = "Admin")]
     [Route("api/v1/admin/shipping-methods")]
     [ApiController]
+    [Authorize(Roles = "Admin")]
     public class AdminShippingMethodController : ControllerBase
     {
         private readonly IShippingMethodService _shippingMethodService;

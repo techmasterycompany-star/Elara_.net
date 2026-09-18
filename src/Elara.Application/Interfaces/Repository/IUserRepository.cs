@@ -1,5 +1,5 @@
-﻿using Elara.Application.DTOs.User;
-using Elara.Application.DTOs.Common;
+﻿using Elara.Application.DTOs.Common;
+using Elara.Application.DTOs.User;
 using Elara.Domain.Entities;
 
 namespace Elara.Application.Interfaces.Repository
