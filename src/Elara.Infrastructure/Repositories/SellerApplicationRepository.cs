@@ -2,6 +2,7 @@
 using Elara.Application.DTOs.SellerApplication;
 using Elara.Application.Interfaces.Repository;
 using Elara.Domain.Entities;
+using Elara.Domain.Enums;
 using Elara.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -63,6 +64,28 @@ namespace Elara.Infrastructure.Repositories
         {
             _context.SellerApplications.Update(application);
             await _context.SaveChangesAsync();
+        }
+
+        public async Task AddAsync(SellerApplication application)
+        {
+            _context.SellerApplications.Add(application);
+            await _context.SaveChangesAsync(); 
+        }
+
+        public async Task<SellerApplication?> GetLatestApplicationByUserIdAsync(long userId)
+        {
+            return await _context.SellerApplications
+                .Where(x => x.UserId == userId)
+                .OrderByDescending(x => x.CreatedAt)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<SellerApplication?> GetPendingApplicationByUserIdAsync(long userId)
+        {
+            return await _context.SellerApplications
+                .FirstOrDefaultAsync(x =>
+                    x.UserId == userId &&
+                    x.Status == SellerApplicationStatus.Pending);
         }
     }
 }

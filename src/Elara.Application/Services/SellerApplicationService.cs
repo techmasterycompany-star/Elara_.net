@@ -5,6 +5,7 @@ using Elara.Application.Exceptions;
 using Elara.Application.Interfaces.Repository;
 using Elara.Application.Interfaces.Service;
 using Elara.Domain.Entities;
+using Elara.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 
 namespace Elara.Application.Services
@@ -73,6 +74,7 @@ namespace Elara.Application.Services
                 };
 
                 application.User.SellerProfile = sellerProfile;
+                application.User.UserRoles.Add(new UserRole { RoleId = 2, UserId = application.UserId });
             }
             else
             {

@@ -9,8 +9,11 @@ namespace Elara.Application.Interfaces.Repository
         Task<PaginationQueryResult<SellerApplication>> GetApplicationsAsync(GetSellerApplicationsRequest request);
 
         Task<SellerApplication?> GetApplicationByIdAsync(long applicationId);
+        Task<SellerApplication?> GetLatestApplicationByUserIdAsync(long userId);
+        Task<SellerApplication?> GetPendingApplicationByUserIdAsync(long userId);
 
         Task<bool> HasPendingApplicationAsync(long userId);
+        Task AddAsync(SellerApplication application);
 
         Task UpdateAsync(SellerApplication application);
     }
