@@ -1,6 +1,5 @@
 ﻿using Elara.Application.DTOs.Common;
 using Elara.Application.DTOs.User;
-using Elara.Domain.Entities;
 using RoleEnum = Elara.Domain.Enums.Role;
 
 namespace Elara.Application.Interfaces.Service
@@ -15,5 +14,4 @@ namespace Elara.Application.Interfaces.Service
         Task<bool> UpdateUserStatus(long userId, bool isActive);
         Task<bool> DeleteUser(long userId);
     }
-
 }
