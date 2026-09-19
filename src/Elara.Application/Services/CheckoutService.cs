@@ -1,0 +1,306 @@
+using AutoMapper;
+using Elara.Application.DTOs.Checkout;
+using Elara.Application.Exceptions;
+using Elara.Application.Interfaces.Repository;
+using Elara.Application.Interfaces.Service;
+using Elara.Domain.Entities;
+using Elara.Domain.Enums;
+
+namespace Elara.Application.Services
+{
+    public class CheckoutService : ICheckoutService
+    {
+        private readonly ICheckoutRepository _checkoutRepository;
+        private readonly IMapper _mapper;
+
+        public CheckoutService(ICheckoutRepository checkoutRepository, IMapper mapper)
+        {
+            _checkoutRepository = checkoutRepository;
+            _mapper = mapper;
+        }
+
+        public async Task<IEnumerable<ShippingMethodDto>> GetShippingMethodsAsync()
+        {
+            var shippingMethods = await _checkoutRepository.GetActiveShippingMethodsAsync();
+            return _mapper.Map<IEnumerable<ShippingMethodDto>>(shippingMethods);
+        }
+
+        public async Task<CheckoutPreviewResponse> PreviewCheckoutAsync(long? userId, string? guestSessionId, CheckoutPreviewRequest request)
+        {
+            // Get checkout items
+            var checkoutItems = await GetCheckoutItemsAsync(userId, guestSessionId, request.CartId);
+
+            // Validate shipping method
+            var shippingMethod = await _checkoutRepository.GetShippingMethodByIdAsync(request.ShippingMethodId);
+            if (shippingMethod == null)
+                throw new NotFoundException("Shipping method not found");
+
+            if (!shippingMethod.IsActive)
+                throw new BadRequestException("Shipping method is not available");
+
+            // Calculate subtotal
+            decimal subtotal = checkoutItems.Sum(item => item.Subtotal);
+
+            // Calculate discount
+            decimal discountAmount = 0m;
+            string? appliedPromoCode = null;
+
+            if (!string.IsNullOrWhiteSpace(request.PromoCode))
+            {
+                var promoCode = await _checkoutRepository.GetPromoCodeByCodeAsync(request.PromoCode);
+                if (promoCode != null && IsPromoCodeValid(promoCode))
+                {
+                    discountAmount = CalculateDiscount(subtotal, promoCode);
+                    appliedPromoCode = promoCode.Code;
+                }
+            }
+
+            decimal shippingCost = shippingMethod.BaseCost;
+
+            decimal totalAmount = subtotal - discountAmount + shippingCost;
+
+            return new CheckoutPreviewResponse
+            {
+                SubTotal = subtotal,
+                DiscountAmount = discountAmount,
+                ShippingCost = shippingCost,
+                TotalAmount = totalAmount,
+                Items = checkoutItems,
+                AppliedPromoCode = appliedPromoCode,
+                ShippingMethod = _mapper.Map<ShippingMethodDto>(shippingMethod)
+            };
+        }
+
+        public async Task<CheckoutResponse> ProcessCheckoutAsync(long? userId, string? guestSessionId, CheckoutRequest request)
+        {
+            // Get checkout items
+            var checkoutItems = await GetCheckoutItemsAsync(userId, guestSessionId, request.CartId);
+
+            // Validate all items
+            await ValidateCheckoutItemsAsync(checkoutItems);
+
+            // Validate shipping method
+            var shippingMethod = await _checkoutRepository.GetShippingMethodByIdAsync(request.ShippingMethodId);
+            if (shippingMethod == null)
+                throw new NotFoundException("Shipping method not found");
+
+            if (!shippingMethod.IsActive)
+                throw new BadRequestException("Shipping method is not available");
+
+            // Calculate totals
+            decimal subtotal = checkoutItems.Sum(item => item.Subtotal);
+            decimal discountAmount = 0m;
+            PromoCode? appliedPromoCode = null;
+
+            if (!string.IsNullOrWhiteSpace(request.PromoCode))
+            {
+                appliedPromoCode = await _checkoutRepository.GetPromoCodeByCodeAsync(request.PromoCode);
+                if (appliedPromoCode != null && IsPromoCodeValid(appliedPromoCode))
+                {
+                    discountAmount = CalculateDiscount(subtotal, appliedPromoCode);
+                }
+            }
+
+            decimal shippingCost = shippingMethod.BaseCost;
+            decimal totalAmount = subtotal - discountAmount + shippingCost;
+
+            // Create order
+            var order = new Order
+            {
+                UserId = userId,
+                GuestFullName = userId.HasValue ? null : request.ShippingAddress.FullName,
+                GuestEmail = userId.HasValue ? null : request.ShippingAddress.FullName,
+                GuestPhoneNumber = userId.HasValue ? null : request.ShippingAddress.Phone,
+                ShippingFullName = request.ShippingAddress.FullName,
+                ShippingPhone = request.ShippingAddress.Phone,
+                ShippingStreet = request.ShippingAddress.Street,
+                ShippingCity = request.ShippingAddress.City,
+                ShippingState = request.ShippingAddress.State,
+                ShippingPostalCode = request.ShippingAddress.PostalCode,
+                ShippingCountry = request.ShippingAddress.Country,
+                ShippingMethodId = request.ShippingMethodId,
+                PromoCodeId = appliedPromoCode?.Id,
+                OrderDate = DateTime.UtcNow,
+                Status = OrderStatus.Pending,
+                SubTotal = subtotal,
+                DiscountAmount = discountAmount,
+                ShippingCost = shippingCost,
+                TotalAmount = totalAmount,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                IsDeleted = false
+            };
+
+            // Add order items
+            foreach (var item in checkoutItems)
+            {
+                order.Items.Add(new OrderItem
+                {
+                    ProductId = item.ProductId,
+                    Quantity = item.Quantity,
+                    UnitPrice = item.UnitPrice,
+                    Discount = item.Discount,
+                    Subtotal = item.Subtotal,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+
+            // Create payment record
+            var payment = new Payment
+            {
+                Method = request.PaymentMethod,
+                Provider = GetPaymentProvider(request.PaymentMethod),
+                TransactionId = null,
+                Amount = totalAmount,
+                Status = PaymentStatus.Pending,
+                PaidAt = null,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            order.Payment = payment;
+
+            Order? createdOrder = null;
+            await _checkoutRepository.CreateTransactionAsync(async () =>
+            {
+                createdOrder =
+                    await _checkoutRepository.CreateOrderAsync(order);
+            });
+
+            // var session = await stripeService.CreateCheckoutSessionAsync(data);
+            // payment.TransactionId = session.Id;
+
+            return new CheckoutResponse
+            {
+                OrderId = createdOrder.Id,
+                OrderNumber = $"ORD-{createdOrder.Id:D8}",
+                Status = createdOrder.Status,
+                OrderDate = createdOrder.OrderDate,
+                TotalAmount = createdOrder.TotalAmount,
+                PaymentMethod = payment.Method,
+                PaymentStatus = payment.Status,
+                Message = "Order placed successfully"
+            };
+        }
+
+        private async Task<List<CheckoutItemPreviewDto>> GetCheckoutItemsAsync(long? userId, string? guestSessionId, long? cartId)
+        {
+            List<CheckoutItemPreviewDto> checkoutItems = [];
+
+            if (cartId.HasValue)
+            {
+                // Get items from cart
+                var cart = await _checkoutRepository.GetCartWithItemsAsync(cartId.Value, userId, guestSessionId);
+                if (cart == null)
+                    throw new NotFoundException("Cart not found");
+
+                if (!cart.Items.Any())
+                    throw new BadRequestException("Cart is empty");
+
+                foreach (var cartItem in cart.Items)
+                {
+                    var product = await _checkoutRepository.GetProductWithSellerAsync(cartItem.ProductId);
+                    if (product == null) continue;
+
+                    checkoutItems.Add(new CheckoutItemPreviewDto
+                    {
+                        ProductId = product.Id,
+                        ProductName = product.Name,
+                        Quantity = cartItem.Quantity,
+                        UnitPrice = product.Price,
+                        Discount = 0m,
+                        Subtotal = cartItem.Quantity * product.Price,
+                        SellerName = product.SellerProfile?.StoreName ?? "Unknown Seller"
+                    });
+                }
+            }
+            else
+            {
+                throw new BadRequestException("No items provided for checkout");
+            }
+
+            if (!checkoutItems.Any())
+                throw new BadRequestException("No valid items found for checkout");
+
+            return checkoutItems;
+        }
+
+        private async Task ValidateCheckoutItemsAsync(List<CheckoutItemPreviewDto> items)
+        {
+            var productIds = items.Select(i => i.ProductId).ToList();
+            var products = await _checkoutRepository.GetProductsWithSellerAsync(productIds);
+
+            foreach (var item in items)
+            {
+                var product = products.FirstOrDefault(p => p.Id == item.ProductId);
+
+                // Validate product exists
+                if (product == null)
+                    throw new NotFoundException($"Product {item.ProductId} not found");
+
+                // Validate product availability
+                if (product.IsDeleted)
+                    throw new BadRequestException($"Product '{product.Name}' is no longer available");
+
+                if (!product.IsActive)
+                    throw new BadRequestException($"Product '{product.Name}' is currently inactive");
+
+                // Validate stock availability
+                if (product.StockQuantity < item.Quantity)
+                    throw new BadRequestException($"Insufficient stock for '{product.Name}'. Available: {product.StockQuantity}");
+
+                // Validate seller availability
+                if (product.SellerProfile == null || product.SellerProfile.IsDeleted)
+                    throw new BadRequestException($"Seller for product '{product.Name}' is not available");
+
+                if (!product.SellerProfile.IsApproved)
+                    throw new BadRequestException($"Seller for product '{product.Name}' is not approved");
+
+                item.UnitPrice = product.Price;
+                item.Subtotal = item.Quantity * product.Price;
+            }
+        }
+
+        private bool IsPromoCodeValid(PromoCode promoCode)
+        {
+            var now = DateTime.UtcNow;
+            return promoCode.IsActive
+                && promoCode.ExpiryDate >= now
+                && promoCode.UsageLimit > promoCode.TimesUsed;
+        }
+
+        private decimal CalculateDiscount(decimal subtotal, PromoCode promoCode)
+        {
+            if (promoCode.DiscountType == DiscountType.Percentage)
+            {
+                if ((promoCode.DiscountValue > 0 && promoCode.DiscountValue < 100))
+                {
+                    return subtotal * (promoCode.DiscountValue / 100m);
+                }
+                throw new BadRequestException("Invalid percentage discount value");
+            }
+            else
+            {
+                if (promoCode.DiscountValue >= subtotal)
+                {
+                    throw new BadRequestException("Discount value cannot exceed subtotal");
+                }
+                return Math.Min(promoCode.DiscountValue, subtotal);
+            }
+        }
+
+        private string GetPaymentProvider(PaymentMethodType paymentMethod)
+        {
+            return paymentMethod switch
+            {
+                PaymentMethodType.CreditCard => "Stripe",
+                PaymentMethodType.PayPal => "PayPal",
+                PaymentMethodType.CashOnDelivery => "COD",
+                PaymentMethodType.Wallet => "Wallet",
+                _ => "Unknown"
+            };
+        }
+
+    }
+}

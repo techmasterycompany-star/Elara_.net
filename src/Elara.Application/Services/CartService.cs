@@ -18,13 +18,24 @@ namespace Elara.Application.Services
             _mapper = mapper;
         }
 
-        public async Task<CartDto> GetCartItemsAsync(long userId)
+        public async Task<GuestSessionDto> CreateGuestSessionAsync()
         {
-            var cart = await _cartRepository.GetCartByUserIdAsync(userId);
+            var guestSessionId = Guid.NewGuid().ToString();
+            var cart = await _cartRepository.CreateGuestCartAsync(guestSessionId);
+
+            return new GuestSessionDto
+            {
+                GuestSessionId = guestSessionId,
+                CreatedAt = cart.CreatedAt
+            };
+        }
+
+        public async Task<CartDto> GetCartItemsAsync(long? userId, string? guestSessionId)
+        {
+            var cart = await GetCartAsync(userId, guestSessionId);
 
             if (cart == null)
             {
-                // Return empty cart if none exists
                 return new CartDto
                 {
                     CartId = 0,
@@ -38,13 +49,11 @@ namespace Elara.Application.Services
             return cartDto;
         }
 
-        public async Task<CartItemDto> AddToCartAsync(long userId, AddToCartDto addToCartDto)
-        {   
-            // Validate quantity
+        public async Task<CartItemDto> AddToCartAsync(long? userId, string? guestSessionId, AddToCartDto addToCartDto)
+        {
             if (addToCartDto.Quantity <= 0)
                 throw new BadRequestException("Quantity must be greater than zero");
 
-            // Validate product exists and is available
             var product = await _cartRepository.GetProductByIdAsync(addToCartDto.ProductId);
             if (product == null)
                 throw new NotFoundException("Product not found");
@@ -55,15 +64,16 @@ namespace Elara.Application.Services
             if (!product.IsActive)
                 throw new BadRequestException("Product is currently inactive");
 
-            // Validate stock availability
             if (product.StockQuantity < addToCartDto.Quantity)
                 throw new BadRequestException($"Insufficient stock. Available: {product.StockQuantity}");
 
             // Get or create cart
-            var cart = await _cartRepository.GetCartByUserIdAsync(userId);
+            var cart = await GetCartAsync(userId, guestSessionId);
             if (cart == null)
             {
-                cart = await _cartRepository.CreateCartAsync(userId);
+                cart = userId.HasValue
+                    ? await _cartRepository.CreateCartAsync(userId.Value)
+                    : await _cartRepository.CreateGuestCartAsync(guestSessionId!);
             }
 
             // Check if product already exists in cart
@@ -103,10 +113,9 @@ namespace Elara.Application.Services
             }
         }
 
-        public async Task RemoveFromCartAsync(long userId, long productId)
+        public async Task RemoveFromCartAsync(long? userId, string? guestSessionId, long productId)
         {
-            // Get user's cart
-            var cart = await _cartRepository.GetCartByUserIdAsync(userId);
+            var cart = await GetCartAsync(userId, guestSessionId);
             if (cart == null)
                 throw new NotFoundException("Cart not found");
 
@@ -115,27 +124,22 @@ namespace Elara.Application.Services
             if (cartItem == null)
                 throw new NotFoundException("Product not found in cart");
 
-            // Remove cart item
-            await _cartRepository.RemoveCartItemAsync(cartItem.Id);
+            await _cartRepository.RemoveCartItemAsync(cartItem);
         }
 
-        public async Task<CartItemDto> UpdateCartItemQuantityAsync(long userId, long productId, int quantity)
+        public async Task<CartItemDto> UpdateCartItemQuantityAsync(long? userId, string? guestSessionId, long productId, int quantity)
         {
-            // Validate quantity
             if (quantity <= 0)
                 throw new BadRequestException("Quantity must be greater than zero");
 
-            // Get user's cart
-            var cart = await _cartRepository.GetCartByUserIdAsync(userId);
+            var cart = await GetCartAsync(userId, guestSessionId);
             if (cart == null)
                 throw new NotFoundException("Cart not found");
 
-            // Get cart item
             var cartItem = await _cartRepository.GetCartItemAsync(cart.Id, productId);
             if (cartItem == null)
                 throw new NotFoundException("Product not found in cart");
 
-            // Validate product still exists and is available
             var product = await _cartRepository.GetProductByIdAsync(productId);
             if (product == null)
                 throw new NotFoundException("Product not found");
@@ -146,7 +150,6 @@ namespace Elara.Application.Services
             if (!product.IsActive)
                 throw new BadRequestException("Product is currently inactive");
 
-            // Validate stock availability
             if (product.StockQuantity < quantity)
                 throw new BadRequestException($"Insufficient stock. Available: {product.StockQuantity}");
 
@@ -157,6 +160,17 @@ namespace Elara.Application.Services
             await _cartRepository.UpdateCartItemAsync(cartItem);
 
             return _mapper.Map<CartItemDto>(cartItem);
+        }
+
+        private async Task<Cart?> GetCartAsync(long? userId, string? guestSessionId)
+        {
+            if (userId.HasValue)
+                return await _cartRepository.GetCartByUserIdAsync(userId.Value);
+
+            if (string.IsNullOrWhiteSpace(guestSessionId))
+                throw new BadRequestException("Guest session ID is required");
+
+            return await _cartRepository.GetCartByGuestSessionIdAsync(guestSessionId);
         }
     }
 }
