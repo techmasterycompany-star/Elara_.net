@@ -36,6 +36,7 @@ namespace Elara.Infrastructure
             services.AddScoped<ICartRepository, CartRepository>();
             services.AddScoped<IOrderRepository, OrderRepository>();
             services.AddScoped<IShipmentRepository, ShipmentRepository>();
+            services.AddScoped<ICheckoutRepository, CheckoutRepository>();
 
             return services;
         }

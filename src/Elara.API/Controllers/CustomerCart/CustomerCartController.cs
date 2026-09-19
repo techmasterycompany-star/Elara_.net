@@ -3,13 +3,11 @@ using Elara.Application.DTOs.Common;
 using Elara.Application.Interfaces.Service;
 using Microsoft.AspNetCore.Mvc;
 using Elara.API.Helpers;
-using Microsoft.AspNetCore.Authorization;
 
 namespace Elara.API.Controllers.Customer
 {
     [Route("api/v1/customers/me/cart")]
     [ApiController]
-    [Authorize(Roles="Customer")]
     public class CustomerCartController : ControllerBase
     {
         private readonly ICartService _cartService;
@@ -23,9 +21,7 @@ namespace Elara.API.Controllers.Customer
         [HttpGet("items")]
         public async Task<IActionResult> GetCartItems()
         {
-            long userId = User.GetAuthenticatedUserId();
-
-            var cart = await _cartService.GetCartItemsAsync(userId);
+            var cart = await _cartService.GetCartItemsAsync(GetUserId(), GetGuestSessionId());
             var response = ApiResponse<CartDto>.SuccessResponse(cart);
             return Ok(response);
         }
@@ -34,9 +30,7 @@ namespace Elara.API.Controllers.Customer
         [HttpPost("items")]
         public async Task<IActionResult> AddToCart([FromBody] AddToCartDto addToCartDto)
         {
-            long userId = User.GetAuthenticatedUserId();
-
-            var cartItem = await _cartService.AddToCartAsync(userId, addToCartDto);
+            var cartItem = await _cartService.AddToCartAsync(GetUserId(), GetGuestSessionId(), addToCartDto);
             var response = ApiResponse<CartItemDto>.SuccessResponse(cartItem);
             return Ok(response);
         }
@@ -45,21 +39,23 @@ namespace Elara.API.Controllers.Customer
         [HttpPatch("items/{productId}/quantity")]
         public async Task<IActionResult> UpdateCartItemQuantity(long productId, [FromBody] UpdateCartItemQuantityDto updateDto)
         {
-            long userId = User.GetAuthenticatedUserId();
-
-            var cartItem = await _cartService.UpdateCartItemQuantityAsync(userId, productId, updateDto.Quantity);
+            var cartItem = await _cartService.UpdateCartItemQuantityAsync(GetUserId(), GetGuestSessionId(), productId, updateDto.Quantity);
             var response = ApiResponse<CartItemDto>.SuccessResponse(cartItem);
             return Ok(response);
         }
-       
+
         // Remove a product from the customer's cart
         [HttpDelete("items/{productId}")]
         public async Task<IActionResult> RemoveFromCart(long productId)
         {
-            long userId = User.GetAuthenticatedUserId();
-
-            await _cartService.RemoveFromCartAsync(userId, productId);
+            await _cartService.RemoveFromCartAsync(GetUserId(), GetGuestSessionId(), productId);
             return NoContent();
         }
+
+        private long? GetUserId() => User.Identity?.IsAuthenticated == true
+            ? User.GetAuthenticatedUserId()
+            : null;
+
+        private string? GetGuestSessionId() => Request.Cookies["Guest-Session-Id"];
     }
 }
