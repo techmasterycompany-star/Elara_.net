@@ -41,6 +41,11 @@ namespace Elara.Infrastructure
             services.AddScoped<ISellerApplicationRepository, SellerApplicationRepository>();
             services.AddScoped<ISellerRepository, SellerRepository>();
 
+            services.Configure<CloudinarySettings>(configuration.GetSection("Cloudinary"));
+
+            services.AddScoped<IStorageService, CloudinaryStorageService>();         
+            services.AddScoped<IProductRepository, ProductRepository>();           
+
             return services;
         }
     }
