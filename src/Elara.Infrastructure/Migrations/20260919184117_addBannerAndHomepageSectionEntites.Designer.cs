@@ -4,6 +4,7 @@ using Elara.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Elara.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260919184117_addBannerAndHomepageSectionEntites")]
+    partial class addBannerAndHomepageSectionEntites
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -417,9 +420,6 @@ namespace Elara.Infrastructure.Migrations
                     b.Property<long?>("BannerId")
                         .HasColumnType("bigint");
 
-                    b.Property<long?>("CategoryId")
-                        .HasColumnType("bigint");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -452,8 +452,6 @@ namespace Elara.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("BannerId");
-
-                    b.HasIndex("CategoryId");
 
                     b.HasIndex("IsActive", "DisplayOrder");
 
@@ -1496,14 +1494,7 @@ namespace Elara.Infrastructure.Migrations
                         .HasForeignKey("BannerId")
                         .OnDelete(DeleteBehavior.NoAction);
 
-                    b.HasOne("Elara.Domain.Entities.Category", "Category")
-                        .WithMany("HomepageSections")
-                        .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.NoAction);
-
                     b.Navigation("Banner");
-
-                    b.Navigation("Category");
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.Notification", b =>
@@ -1783,8 +1774,6 @@ namespace Elara.Infrastructure.Migrations
             modelBuilder.Entity("Elara.Domain.Entities.Category", b =>
                 {
                     b.Navigation("Children");
-
-                    b.Navigation("HomepageSections");
 
                     b.Navigation("Products");
                 });

@@ -46,6 +46,8 @@ namespace Elara.Infrastructure
 
             services.AddScoped<IStorageService, CloudinaryStorageService>();
             services.AddScoped<IProductRepository, ProductRepository>();
+            services.AddScoped<IHomepageSectionRepository, HomepageSectionRepository>();
+            services.AddScoped<IBannerRepository, BannerRepository>();
 
             return services;
         }

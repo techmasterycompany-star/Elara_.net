@@ -11,7 +11,7 @@ using System.Security.Claims;
 namespace Elara.API.Controllers.Seller
 {
     [ApiController]
-    [Route("api/sellers")]
+    [Route("api/v1/sellers")]
     public class SellersController : ControllerBase
     {
         private readonly ISellerService _sellerService;

@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Elara.API.Controllers.Admin
 {
     [ApiController]
-    [Route("admin/products")]
+    [Route("api/v1/admin/products")]
     [Authorize(Roles = "Admin")]
     public class AdminProductsController : ControllerBase
     {

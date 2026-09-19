@@ -1,5 +1,4 @@
 ﻿using Elara.Domain.Common;
-using Elara.Domain.Enums;
 
 namespace Elara.Domain.Entities
 {
