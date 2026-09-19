@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
-namespace Elara.API.Controllers
+namespace Elara.API.Controllers.Seller
 {
     [ApiController]
     [Route("api/sellers")]
@@ -25,7 +25,7 @@ namespace Elara.API.Controllers
         [Authorize]
         public async Task<IActionResult> Apply(ApplyAsSellerDto request)
         {
-            var userId = ClaimsHelper.GetAuthenticatedUserId(User);
+            var userId = User.GetAuthenticatedUserId();
 
             await _sellerService.ApplyAsync(userId, request);
 
@@ -36,7 +36,7 @@ namespace Elara.API.Controllers
         [Authorize]
         public async Task<IActionResult> GetMyApplication()
         {
-            var userId = ClaimsHelper.GetAuthenticatedUserId(User);
+            var userId = User.GetAuthenticatedUserId();
 
             var result = await _sellerService.GetMyApplicationAsync(userId);
 
@@ -47,7 +47,7 @@ namespace Elara.API.Controllers
         [Authorize]
         public async Task<IActionResult> WithdrawApplication()
         {
-            var userId = ClaimsHelper.GetAuthenticatedUserId(User);
+            var userId = User.GetAuthenticatedUserId();
 
             await _sellerService.WithdrawApplicationAsync(userId);
 
@@ -58,7 +58,7 @@ namespace Elara.API.Controllers
         [Authorize(Roles = "Seller")]
         public async Task<IActionResult> GetMyProfile()
         {
-            var userId = ClaimsHelper.GetAuthenticatedUserId(User);
+            var userId = User.GetAuthenticatedUserId();
 
             var result = await _sellerService.GetMyProfileAsync(userId);
 
@@ -69,7 +69,7 @@ namespace Elara.API.Controllers
         [Authorize(Roles = "Seller")]
         public async Task<IActionResult> UpdateMyProfile(UpdateSellerProfileDto request)
         {
-            var userId = ClaimsHelper.GetAuthenticatedUserId(User);
+            var userId = User.GetAuthenticatedUserId();
 
             await _sellerService.UpdateMyProfileAsync(userId, request);
 
