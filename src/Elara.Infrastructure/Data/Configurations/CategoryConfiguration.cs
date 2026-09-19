@@ -26,6 +26,11 @@ namespace Elara.Infrastructure.Data.Configurations
             builder.HasMany(c => c.Products)
                 .WithOne(p => p.Category)
                 .HasForeignKey(p => p.CategoryId);
+
+            builder.HasMany(c => c.HomepageSections)
+                .WithOne(s => s.Category)
+                .HasForeignKey(s => s.CategoryId)
+                .OnDelete(DeleteBehavior.SetNull);
         }
     }
 }

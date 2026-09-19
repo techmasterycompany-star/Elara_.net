@@ -13,5 +13,6 @@ namespace Elara.Domain.Entities
         public string Description { get; set; } = null!;
 
         public ICollection<Product> Products { get; set; } = [];
+        public ICollection<HomepageSection> HomepageSections { get; set; } = [];
     }
 }
