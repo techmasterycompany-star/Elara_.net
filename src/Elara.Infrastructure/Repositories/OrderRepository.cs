@@ -16,7 +16,7 @@ namespace Elara.Infrastructure.Repositories
             _context = appDbContext;
         }
 
-        public async Task<IEnumerable<Order>> GetAllOrdersAsync(AdminOrderFilterDto request)
+        public async Task<PaginationQueryResult<Order>> GetAllOrdersAsync(AdminOrderFilterDto request)
         {
             var query = _context.Orders
                    .AsNoTracking()
@@ -31,10 +31,10 @@ namespace Elara.Infrastructure.Repositories
 
                 query = query.Where(o =>
                     o.Id.ToString().Contains(search) ||
-                    (o.User != null && (o.User.FullName.Contains(search) || o.User.Email.Contains(search))) ||
-                    (!string.IsNullOrEmpty(o.GuestFullName) &&  o.GuestFullName.Contains(search)) ||
-                    (!string.IsNullOrEmpty(o.GuestEmail) &&  o.GuestEmail.Contains(search)) ||
-                    (!string.IsNullOrEmpty(o.GuestPhoneNumber) &&  o.GuestPhoneNumber.Contains(search)));
+                    (o.User != null && (o.User.FullName.Contains(search, StringComparison.OrdinalIgnoreCase) || o.User.Email.Contains(search, StringComparison.OrdinalIgnoreCase))) ||
+                    (!string.IsNullOrEmpty(o.GuestFullName) &&  o.GuestFullName.Contains(search,StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(o.GuestEmail) &&  o.GuestEmail.Contains(search,StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(o.GuestPhoneNumber) &&  o.GuestPhoneNumber.Contains(search,StringComparison.OrdinalIgnoreCase)));
             }
 
             // Status
@@ -69,13 +69,20 @@ namespace Elara.Infrastructure.Repositories
             // Sorting
             query = ApplySorting(query, request);
 
+            var totalCount = await query.CountAsync();
             // Pagination
             var skip = (request.PageNumber - 1) * request.Limit;
 
-            return await query
+            var items = await query
                 .Skip(skip)
                 .Take(request.Limit)
                 .ToListAsync();
+
+            return new PaginationQueryResult<Order>
+            {
+                Items = items,
+                TotalCount = totalCount
+            };
         }
 
         private static IQueryable<Order> ApplySorting(IQueryable<Order> query, AdminOrderFilterDto request)

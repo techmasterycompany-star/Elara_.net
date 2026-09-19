@@ -25,6 +25,11 @@ namespace Elara.Application
             services.AddScoped<IInventoryService, InventoryService>();
             services.AddScoped<ICartService, CartService>();
             services.AddScoped<ICheckoutService, CheckoutService>();
+            services.AddScoped<ICategoryService, CategoryService>();
+            services.AddScoped<IShippingMethodService, ShippingMethodService>();
+            services.AddScoped<ISellerApplicationService, SellerApplicationService>();
+            services.AddScoped<ISellerService, SellerService>();
+            services.AddScoped<IProductService, ProductService>();
 
             return services;
         }

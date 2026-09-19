@@ -1,11 +1,12 @@
-﻿using Elara.Application.DTOs.User;
+﻿using Elara.Application.DTOs.Common;
+using Elara.Application.DTOs.User;
 using Elara.Domain.Entities;
 
 namespace Elara.Application.Interfaces.Repository
 {
     public interface IUserRepository
     {
-        Task<IEnumerable<User>> GetAllUsersAsync(GetUsersRequest request);
+        Task<PaginationQueryResult<User>> GetAllUsersAsync(GetUsersRequest request);
         Task<User?> GetUserByIdAsync(long userId);
         Task<User?> GetByEmailAsync(string email);
         Task<User?> GetByUsernameAsync(string username);

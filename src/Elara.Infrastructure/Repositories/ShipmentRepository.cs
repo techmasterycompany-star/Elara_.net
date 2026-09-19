@@ -16,7 +16,7 @@ namespace Elara.Infrastructure.Repositories
             _context = appDbContext;
         }
 
-        public async Task<IEnumerable<Shipment>> GetAllShipmentsAsync(AdminShipmentFilterDto request)
+        public async Task<PaginationQueryResult<Shipment>> GetAllShipmentsAsync(AdminShipmentFilterDto request)
         {
             var query = _context.Shipments
                    .AsNoTracking()
@@ -67,13 +67,20 @@ namespace Elara.Infrastructure.Repositories
             // Sorting
             query = ApplySorting(query, request);
 
+            var totalCount = await query.CountAsync();
             // Pagination
             var skip = (request.PageNumber - 1) * request.Limit;
 
-            return await query
+            var items = await query
                 .Skip(skip)
                 .Take(request.Limit)
                 .ToListAsync();
+
+            return new PaginationQueryResult<Shipment>
+            {
+                Items = items,
+                TotalCount = totalCount
+            };
         }
 
         private static IQueryable<Shipment> ApplySorting(IQueryable<Shipment> query, AdminShipmentFilterDto request)

@@ -40,25 +40,36 @@ namespace Elara.API.Controllers.Admin
             return Ok(ApiResponse<UserDetailsDto>.SuccessResponse(user));
         }
 
-        [HttpPut("{userId:long}/status")]
-        public async Task<IActionResult> UpdateUserStatus(long userId, [FromBody] UpdateUserStatusDto updateUserStatusDto)
-        {
-            await _userService.UpdateUserStatus(userId, updateUserStatusDto.IsActive);
-            return StatusCode(204, ApiResponse<string>.SuccessResponse("User status updated successfully."));
-        }
-
         [HttpDelete("{userId:long}")]
         public async Task<IActionResult> DeleteUser(long userId)
         {
             await _userService.DeleteUser(userId);
-            return StatusCode(204, ApiResponse<string>.SuccessResponse("User deleted successfully."));
+            return Ok(ApiResponse<string>.SuccessResponse("User deleted successfully."));
         }
 
         [HttpPut("{userId:long}/roles")]
         public async Task<IActionResult> AssignRolesToUser(long userId, [FromBody] List<RoleEnum> roles)
         {
             await _userService.AssignRolesToUserAsync(userId, roles);
-            return StatusCode(204, ApiResponse<string>.SuccessResponse("Roles assigned successfully."));
+            return Ok(ApiResponse<string>.SuccessResponse("Roles assigned successfully."));
         }
+
+        [HttpPatch("{userId:long}/suspend")]
+        public async Task<IActionResult> SuspendUser(long userId)
+        {
+            await _userService.UpdateUserStatus(userId, isActive:false);
+
+            return Ok(ApiResponse<string>.SuccessResponse("User suspended successfully."));
+        }
+
+        [HttpPatch("{userId:long}/unsuspend")]
+        public async Task<IActionResult> UnsuspendUser(long userId)
+        {
+            await _userService.UpdateUserStatus(userId, isActive: true);
+
+            return Ok(ApiResponse<string>.SuccessResponse("User unsuspended successfully."));
+        }
+
+
     }
 }

@@ -24,14 +24,14 @@ namespace Elara.Application.Services
             var users = await _userRepository.GetAllUsersAsync(request);
             try { 
             
-            var userDtos = _mapper.Map<IEnumerable<UserListDto>>(users);
+            var userDtos = _mapper.Map<IEnumerable<UserListDto>>(users.Items).ToList();
             return new PaginatedResponse<UserListDto>
             {
                 Data = userDtos,
                 PageNumber = request.PageNumber,
                 Limit = request.Limit,
-                TotalCount = users.Count(),
-                TotalPages = (int)Math.Ceiling((double)users.Count() / request.Limit)
+                TotalCount = users.TotalCount,
+                TotalPages = (int)Math.Ceiling((double)users.TotalCount / request.Limit)
             };
             }
             catch (AutoMapperMappingException ex)

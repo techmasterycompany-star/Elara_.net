@@ -923,6 +923,48 @@ namespace Elara.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Elara.Domain.Entities.SellerApplication", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RejectionReason")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("StoreDescription")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("StoreName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasFilter("[Status] = 1");
+
+                    b.ToTable("SellerApplications");
+                });
+
             modelBuilder.Entity("Elara.Domain.Entities.SellerProfile", b =>
                 {
                     b.Property<long>("Id")
@@ -1479,6 +1521,17 @@ namespace Elara.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Elara.Domain.Entities.SellerApplication", b =>
+                {
+                    b.HasOne("Elara.Domain.Entities.User", "User")
+                        .WithMany("SellerApplications")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Elara.Domain.Entities.SellerProfile", b =>
                 {
                     b.HasOne("Elara.Domain.Entities.User", "User")
@@ -1669,6 +1722,8 @@ namespace Elara.Infrastructure.Migrations
                     b.Navigation("PaymentMethods");
 
                     b.Navigation("Reviews");
+
+                    b.Navigation("SellerApplications");
 
                     b.Navigation("SellerProfile");
 

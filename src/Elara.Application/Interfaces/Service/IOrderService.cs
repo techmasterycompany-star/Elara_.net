@@ -1,5 +1,6 @@
 ﻿using Elara.Application.DTOs.Common;
 using Elara.Application.DTOs.Order;
+using Elara.Domain.Entities;
 
 namespace Elara.Application.Interfaces.Service
 {
