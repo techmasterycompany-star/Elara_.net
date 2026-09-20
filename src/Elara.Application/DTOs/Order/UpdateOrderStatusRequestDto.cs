@@ -12,6 +12,4 @@ namespace Elara.Application.DTOs.Order
         [MaxLength(500)]
         public string? Notes { get; set; }
     }
-
-
 }

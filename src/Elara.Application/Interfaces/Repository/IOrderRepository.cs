@@ -5,7 +5,9 @@ using Elara.Domain.Entities;
 namespace Elara.Application.Interfaces.Repository
 {
     public interface IOrderRepository 
-    { 
+    {
+        Task<PaginationQueryResult<Order>> GetSellerOrdersAsync(long sellerProfileId, SellerOrderQuery query);
+        Task<Order?> GetSellerOrderDetailsAsync(long orderId, long sellerProfileId);
         Task<PaginationQueryResult<Order>> GetAllOrdersAsync(AdminOrderFilterDto orderRequest);
         Task<Order?> GetOrderByIdAsync(long id);
         Task<Order?> GetOrderDetailsAsync(long id);

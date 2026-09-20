@@ -4,9 +4,9 @@ using Elara.Domain.Entities;
 
 namespace Elara.Application.Mapping
 {
-    public class AdminShipmentProfile : Profile
+    public class ShipmentProfile : Profile
     {
-        public AdminShipmentProfile()
+        public ShipmentProfile()
         {
             CreateMap<Shipment, AdminShipmentListDto>()
                 .ForMember(
@@ -26,6 +26,14 @@ namespace Elara.Application.Mapping
                 .ForMember(
                     dest => dest.ProductName,
                     opt => opt.MapFrom(src => src.OrderItem.Product.Name));
+
+            CreateMap<Shipment, SellerShipmentListDto>();
+
+            CreateMap<Shipment, SellerShipmentDetailsDto>();
+
+            CreateMap<ShipmentItem, SellerShipmentItemDto>()
+                .ForMember(d => d.ProductId, o => o.MapFrom(s => s.OrderItem.ProductId))
+                .ForMember(d => d.ProductName, o => o.MapFrom(s => s.OrderItem.Product.Name));
         }
     }
 }
