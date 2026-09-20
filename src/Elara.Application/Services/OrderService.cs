@@ -14,11 +14,74 @@ namespace Elara.Application.Services
     {
         private readonly IOrderRepository _orderRepository;
         private readonly IMapper _mapper;
+        private readonly ISellerRepository _sellerRepository;
 
-        public OrderService(IOrderRepository orderRepository, IMapper mapper)
+        public OrderService(IOrderRepository orderRepository, IMapper mapper, ISellerRepository sellerRepository)
         {
             _orderRepository = orderRepository;
+            _sellerRepository = sellerRepository;
             _mapper = mapper;
+        }
+
+        public async Task<PaginatedResponse<SellerOrderListDto>> GetSellerOrdersAsync(long userId, SellerOrderQuery query)
+        {
+            var sellerProfile = await _sellerRepository.GetByUserIdAsync(userId);
+
+            if (sellerProfile == null)
+                throw new NotFoundException("Seller profile not found.");
+
+            var orders = await _orderRepository.GetSellerOrdersAsync(sellerProfile.Id, query);
+
+            var orderDtos = orders.Items.Select(order =>
+            {
+                var items = order.Items.ToList();
+
+                return new SellerOrderListDto
+                {
+                    Id = order.Id,
+                    OrderDate = order.OrderDate,
+                    Status = order.Status,
+                    ShippingCity = order.ShippingCity,
+                    ShippingCountry = order.ShippingCountry,
+                    ItemCount = items.Count,
+                    SellerSubtotal = items.Sum(i => i.Subtotal)
+                };
+            });
+
+            return new PaginatedResponse<SellerOrderListDto>
+            {
+                Data = orderDtos,
+                PageNumber = query.PageNumber,
+                Limit = query.Limit,
+                TotalCount = orders.TotalCount,
+                TotalPages = (int)Math.Ceiling((double)orders.TotalCount / query.Limit)
+            };
+        }
+
+        public async Task<SellerOrderDetailsDto> GetSellerOrderByIdAsync(long orderId, long userId)
+        {
+            var sellerProfile = await _sellerRepository.GetByUserIdAsync(userId);
+
+            if (sellerProfile == null)
+                throw new NotFoundException("Seller profile not found.");
+
+            var order = await _orderRepository.GetSellerOrderDetailsAsync(orderId, sellerProfile.Id);
+
+            if (order == null)
+                throw new NotFoundException("Order not found.");
+
+            var result = _mapper.Map<SellerOrderDetailsDto>(order);
+
+            foreach (var item in result.Items)
+            {
+                var entity = order.Items.First(i => i.Id == item.OrderItemId);
+                var shipped = entity.ShipmentItems.Sum(i => i.Quantity);
+
+                item.QuantityShipped = shipped;
+                item.QuantityRemaining = entity.Quantity - shipped;
+            }
+
+            return result;
         }
 
         public async Task<PaginatedResponse<AdminOrderListDto>> GetAllOrdersAsync(AdminOrderFilterDto orderRequest)

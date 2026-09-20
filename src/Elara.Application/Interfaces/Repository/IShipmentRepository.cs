@@ -10,6 +10,9 @@ namespace Elara.Application.Interfaces.Repository
         Task<Shipment?> GetShipmentByIdAsync(long id);
         Task UpdateShipmentAsync(Shipment shipment);
         Task<List<Shipment>> GetShipmentsByOrderIdAsync(long orderId);
+        Task<PaginationQueryResult<Shipment>> GetSellerShipmentsAsync(long sellerProfileId, SellerShipmentQuery query);
+        Task<Shipment?> GetSellerShipmentByIdAsync(long shipmentId, long sellerProfileId);
+        Task<Shipment> AddAsync(Shipment shipment);
         Task SaveChangesAsync();
     }
 }

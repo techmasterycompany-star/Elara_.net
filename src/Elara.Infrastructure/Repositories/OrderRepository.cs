@@ -16,6 +16,53 @@ namespace Elara.Infrastructure.Repositories
             _context = appDbContext;
         }
 
+        public async Task<PaginationQueryResult<Order>> GetSellerOrdersAsync(long sellerProfileId, SellerOrderQuery query)
+        {
+            var orders = _context.Orders
+                .AsNoTracking()
+                .Where(o => o.Items.Any(i => i.Product.SellerProfileId == sellerProfileId))
+                .Include(o => o.Items.Where(i => i.Product.SellerProfileId == sellerProfileId))
+                    .ThenInclude(i => i.Product)
+                .AsQueryable();
+
+            if (query.Status.HasValue)
+                orders = orders.Where(o => o.Status == query.Status.Value);
+
+            if (query.DateFrom.HasValue)
+                orders = orders.Where(o => o.OrderDate >= query.DateFrom.Value);
+
+            if (query.DateTo.HasValue)
+                orders = orders.Where(o => o.OrderDate <= query.DateTo.Value);
+
+            var desc = query.SortOrder == SortOrderEnum.Desc;
+
+            orders = desc ? orders.OrderByDescending(o => o.OrderDate) : orders.OrderBy(o => o.OrderDate);
+
+            var totalCount = await orders.CountAsync();
+
+            var items = await orders
+                .Skip((query.PageNumber - 1) * query.Limit)
+                .Take(query.Limit)
+                .ToListAsync();
+
+            return new PaginationQueryResult<Order>
+            {
+                Items = items,
+                TotalCount = totalCount
+            };
+        }
+
+        public async Task<Order?> GetSellerOrderDetailsAsync(long orderId, long sellerProfileId)
+        {
+            return await _context.Orders
+                .AsNoTracking()
+                .Include(o => o.Items.Where(i => i.Product.SellerProfileId == sellerProfileId))
+                    .ThenInclude(i => i.Product)
+                .Include(o => o.Items.Where(i => i.Product.SellerProfileId == sellerProfileId))
+                    .ThenInclude(i => i.ShipmentItems)
+                .FirstOrDefaultAsync(o => o.Id == orderId && o.Items.Any(i => i.Product.SellerProfileId == sellerProfileId));
+        }
+
         public async Task<PaginationQueryResult<Order>> GetAllOrdersAsync(AdminOrderFilterDto request)
         {
             var query = _context.Orders

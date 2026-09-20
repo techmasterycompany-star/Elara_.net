@@ -120,9 +120,58 @@ namespace Elara.Infrastructure.Repositories
                 .ToListAsync();
         }
 
+        public async Task<PaginationQueryResult<Shipment>> GetSellerShipmentsAsync(long sellerProfileId, SellerShipmentQuery query)
+        {
+            var shipments = _context.Shipments
+                .AsNoTracking()
+                .Where(s => !s.IsDeleted && s.SellerProfileId == sellerProfileId)
+                .Include(s => s.Items)
+                    .ThenInclude(i => i.OrderItem)
+                    .ThenInclude(i => i.Product)
+                .AsQueryable();
+
+            if (query.Status.HasValue)
+                shipments = shipments.Where(s => s.Status == query.Status.Value);
+
+            if (query.OrderId.HasValue)
+                shipments = shipments.Where(s => s.OrderId == query.OrderId.Value);
+
+            var desc = query.SortOrder == SortOrderEnum.Desc;
+
+            shipments = desc ? shipments.OrderByDescending(s => s.CreatedAt) : shipments.OrderBy(s => s.CreatedAt);
+
+            var totalCount = await shipments.CountAsync();
+
+            var items = await shipments
+                .Skip((query.PageNumber - 1) * query.Limit)
+                .Take(query.Limit)
+                .ToListAsync();
+
+            return new PaginationQueryResult<Shipment>
+            {
+                Items = items,
+                TotalCount = totalCount
+            };
+        }
+
+        public async Task<Shipment?> GetSellerShipmentByIdAsync(long shipmentId, long sellerProfileId)
+        {
+            return await _context.Shipments
+                .Include(s => s.Items)
+                    .ThenInclude(i => i.OrderItem)
+                    .ThenInclude(i => i.Product)
+                .FirstOrDefaultAsync(s => !s.IsDeleted && s.Id == shipmentId && s.SellerProfileId == sellerProfileId);
+        }
+
+        public Task<Shipment> AddAsync(Shipment shipment)
+        {
+            _context.Shipments.Add(shipment);
+            return Task.FromResult(shipment);
+        }
         public async Task SaveChangesAsync()
         {
             await _context.SaveChangesAsync();
         }
+
     }
 }
