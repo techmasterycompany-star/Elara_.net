@@ -13,6 +13,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using System.Text.Json.Serialization;
 using Elara.API.Filters;
+using Elara.Infrastructure.Options;
 
 // .ENV
 Env.Load();
@@ -61,42 +62,68 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 // JWT Options
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-        ValidAudience = builder.Configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
-    };
+var jwtOptions = builder.Configuration
+    .GetSection("Jwt")
+    .Get<JwtOptions>()
+    ?? throw new InvalidOperationException(
+        "JWT configuration is missing.");
 
-    options.Events = new JwtBearerEvents
+builder.Services
+    .AddOptions<JwtOptions>()
+    .Bind(builder.Configuration.GetSection("Jwt"))
+    .Validate(options =>
+        !string.IsNullOrWhiteSpace(options.Key) &&
+        !string.IsNullOrWhiteSpace(options.Issuer) &&
+        !string.IsNullOrWhiteSpace(options.Audience) &&
+        options.DurationInMinutes > 0,
+        "Invalid JWT configuration.")
+    .ValidateOnStart();
+
+builder.Services
+    .AddAuthentication(options =>
     {
-        OnTokenValidated = async context =>
-        {
-            var jti = context.Principal?.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
-            if (!string.IsNullOrEmpty(jti))
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters =
+            new TokenValidationParameters
             {
-                var revokedRepo = context.HttpContext.RequestServices
-                    .GetRequiredService<IRevokedTokenRepository>();
-                if (await revokedRepo.IsRevokedAsync(jti))
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = jwtOptions.Issuer,
+                ValidAudience = jwtOptions.Audience,
+                IssuerSigningKey = new SymmetricSecurityKey(
+                    Encoding.UTF8.GetBytes(jwtOptions.Key)),
+                ClockSkew = TimeSpan.Zero,
+            };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var jti = context.Principal?
+                    .FindFirst(JwtRegisteredClaimNames.Jti)?
+                    .Value;
+
+                if (!string.IsNullOrEmpty(jti))
                 {
-                    context.Fail("Token has been revoked.");
+                    var revokedRepository = context.HttpContext
+                        .RequestServices
+                        .GetRequiredService<
+                            IRevokedTokenRepository>();
+
+                    if (await revokedRepository.IsRevokedAsync(jti))
+                    {
+                        context.Fail("Token has been revoked.");
+                    }
                 }
             }
-        }
-    };
-});
+        };
+    });
 
 builder.Services.AddAuthorization();
 
@@ -132,6 +159,18 @@ builder.Services.AddCors(options =>
             .AllowAnyOrigin();
     });
 });
+
+builder.Services
+    .AddOptions<EmailOptions>()
+    .Bind(builder.Configuration.GetSection("Email"))
+    .Validate(options =>
+        !string.IsNullOrWhiteSpace(options.ClientUrl) &&
+        !string.IsNullOrWhiteSpace(options.Smtp.Host) &&
+        options.Smtp.Port > 0 &&
+        !string.IsNullOrWhiteSpace(options.Smtp.Username) &&
+        !string.IsNullOrWhiteSpace(options.Smtp.Password),
+        "Invalid email configuration.")
+    .ValidateOnStart();
 
 var app = builder.Build();
 

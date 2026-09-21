@@ -1,6 +1,7 @@
 ﻿using Elara.Application.Interfaces.Service.Auth;
-using Microsoft.Extensions.Configuration;
+using Elara.Infrastructure.Options;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System.Net;
 using System.Net.Mail;
 using System.Web;
@@ -9,19 +10,19 @@ namespace Elara.Infrastructure.Services
 {
     public class EmailService : IEmailService
     {
-        private readonly IConfiguration _configuration;
+        private readonly EmailOptions emailOptions;
         private readonly ILogger<EmailService> _logger;
 
-        public EmailService(IConfiguration configuration, ILogger<EmailService> logger)
+        public EmailService(IOptions<EmailOptions> emailOptions, ILogger<EmailService> logger)
         {
-            _configuration = configuration;
+            this.emailOptions = emailOptions.Value;
             _logger = logger;
         }
 
         public async Task SendEmailConfirmationAsync(string email, string token)
         {
-            var clientUrl = _configuration["ClientUrl"] ?? "https://localhost:7121";
-            var link = $"{clientUrl}/api/Auth/verify-email?email={HttpUtility.UrlEncode(email)}&token={HttpUtility.UrlEncode(token)}";
+            var clientUrl = emailOptions.ClientUrl ?? "https://localhost:7067";
+            var link = $"{clientUrl}/api/v1/Auth/verify-email?email={HttpUtility.UrlEncode(email)}&token={HttpUtility.UrlEncode(token)}";
 
             var body = $@"
                 <div style='font-family:Arial;text-align:center;padding:30px;'>
@@ -38,8 +39,8 @@ namespace Elara.Infrastructure.Services
 
         public async Task SendPasswordResetAsync(string email, string token)
         {
-            var clientUrl = _configuration["ClientUrl"] ?? "https://localhost:7121";
-            var link = $"{clientUrl}/reset-password?email={HttpUtility.UrlEncode(email)}&token={HttpUtility.UrlEncode(token)}";
+            var clientUrl = emailOptions.ClientUrl ?? "https://localhost:7067";
+            var link = $"{clientUrl}/api/v1/Auth/reset-password?email={HttpUtility.UrlEncode(email)}&token={HttpUtility.UrlEncode(token)}";
 
             var body = $@"
                 <div style='font-family:Arial;text-align:center;padding:30px;'>
@@ -56,12 +57,11 @@ namespace Elara.Infrastructure.Services
 
         private async Task SendAsync(string toEmail, string subject, string htmlBody)
         {
-            var host = _configuration["Smtp:Host"] ?? "smtp.gmail.com";
-            var port = int.Parse(_configuration["Smtp:Port"] ?? "587");
-            var username = _configuration["Smtp:Username"]!;
-            var password = _configuration["Smtp:Password"]!;
-            var from = _configuration["Smtp:From"] ?? username;
-
+            var host = emailOptions.Smtp.Host ?? "smtp.gmail.com";
+            var port = emailOptions.Smtp.Port > 0 ? emailOptions.Smtp.Port : 587;
+            var username = emailOptions.Smtp.Username!;
+            var password = emailOptions.Smtp.Password!;
+            var from = emailOptions.Smtp.From ?? username;
             using var message = new MailMessage
             {
                 From = new MailAddress(from),
