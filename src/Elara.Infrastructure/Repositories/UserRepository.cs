@@ -8,16 +8,14 @@ namespace Elara.Infrastructure.Repositories
 {
     public class UserRepository : IUserRepository
     {
-        private readonly AppDbContext _context;
+        private readonly AppDbContext context;
 
-        public UserRepository(AppDbContext context)
-        {
-            _context = context;
-        }
+        public UserRepository(AppDbContext context) => this.context = context;
+
 
         public async Task<IEnumerable<User>> GetAllUsersAsync(GetUsersRequest request)
         {
-            var query = _context.Users.Include(u => u.UserRoles).ThenInclude(ur => ur.Role).AsQueryable();
+            var query = context.Users.Include(u => u.UserRoles).ThenInclude(ur => ur.Role).AsQueryable();
 
             if (request.IsActive.HasValue)
                 query = query.Where(u => u.IsActive == request.IsActive.Value);
@@ -39,49 +37,49 @@ namespace Elara.Infrastructure.Repositories
 
         public async Task<User?> GetUserByIdAsync(long userId)
         {
-            return await _context.Users.Include(u => u.UserRoles).ThenInclude(ur => ur.Role).FirstOrDefaultAsync(u => u.Id == userId);
+            return await context.Users.Include(u => u.UserRoles).ThenInclude(ur => ur.Role).FirstOrDefaultAsync(u => u.Id == userId);
         }
 
         public async Task<User?> GetByEmailAsync(string email) =>
-            await _context.Users.Include(u => u.UserRoles).ThenInclude(ur => ur.Role).FirstOrDefaultAsync(u => u.Email == email);
+            await context.Users.Include(u => u.UserRoles).ThenInclude(ur => ur.Role).FirstOrDefaultAsync(u => u.Email == email);
 
         public async Task<User?> GetByUsernameAsync(string username) =>
-            await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+            await context.Users.FirstOrDefaultAsync(u => u.Username == username);
 
         public async Task<User?> GetByPhoneNumberAsync(string phoneNumber) =>
-            await _context.Users.FirstOrDefaultAsync(u => u.PhoneNumber == phoneNumber);
+            await context.Users.FirstOrDefaultAsync(u => u.PhoneNumber == phoneNumber);
 
         public async Task<User?> GetByIdAsync(long id) =>
-            await _context.Users.Include(u => u.UserRoles).ThenInclude(ur => ur.Role).FirstOrDefaultAsync(u => u.Id == id);
+            await context.Users.Include(u => u.UserRoles).ThenInclude(ur => ur.Role).FirstOrDefaultAsync(u => u.Id == id);
 
         public async Task<User?> GetByIdWithAddressesAsync(long id) =>
-            await _context.Users.Include(u => u.Addresses).Include(u => u.UserRoles).ThenInclude(ur => ur.Role).FirstOrDefaultAsync(u => u.Id == id);
+            await context.Users.Include(u => u.Addresses).Include(u => u.UserRoles).ThenInclude(ur => ur.Role).FirstOrDefaultAsync(u => u.Id == id);
 
         public async Task<Role?> GetRoleByIdAsync(long roleId)
         {
-            return await _context.Roles.FindAsync(roleId);
+            return await context.Roles.FindAsync(roleId);
         }
 
         public async Task<IEnumerable<Role>> GetRolesByIdsAsync(IEnumerable<long> roleIds)
         {
-            return await _context.Roles.Where(r => roleIds.Contains(r.Id)).ToListAsync();
+            return await context.Roles.Where(r => roleIds.Contains(r.Id)).ToListAsync();
         }
 
         public async Task<IEnumerable<Role>> GetAllRolesAsync()
         {
-            return await _context.Roles.ToListAsync();
+            return await context.Roles.ToListAsync();
         }
 
         public async Task AddUserAsync(User user)
         {
-            await _context.Users.AddAsync(user);
-            await _context.SaveChangesAsync();
+            await context.Users.AddAsync(user);
+            await context.SaveChangesAsync();
         }
 
         public async Task UpdateUserAsync(User user)
         {
-            _context.Users.Update(user);
-            await _context.SaveChangesAsync();
+            context.Users.Update(user);
+            await context.SaveChangesAsync();
         }
     }
 }

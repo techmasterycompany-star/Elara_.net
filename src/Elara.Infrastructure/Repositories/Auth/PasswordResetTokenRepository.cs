@@ -13,12 +13,12 @@ namespace Elara.Infrastructure.Repositories.Auth
 
         public async Task AddAsync(PasswordResetToken passwordResetToken)
         {
-            await context.Set<PasswordResetToken>().AddAsync(passwordResetToken);
+            await context.PasswordResetTokens.AddAsync(passwordResetToken);
             await context.SaveChangesAsync();
         }
 
         public async Task<PasswordResetToken?> GetValidTokenAsync(string email, string token) =>
-             await context.Set<PasswordResetToken>()
+             await context.PasswordResetTokens
                 .Include(c => c.User)
                 .FirstOrDefaultAsync(c => c.User.Email == email
                     && c.Token == token

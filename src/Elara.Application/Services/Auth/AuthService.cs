@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Security.Cryptography;
+using System.Text.Json.Serialization;
 
 namespace Elara.Application.Services.Auth
 {
@@ -63,8 +64,8 @@ namespace Elara.Application.Services.Auth
 
         public async Task ForgotPasswordAsync(ForgotPasswordRequest request)
         {
-            var user = await repo.GetByEmailAsync(request.Email);
-            if (user == null) return;
+            var user = await repo.GetByEmailAsync(request.Email)
+                ?? throw new KeyNotFoundException("User not found.");
 
             var resetToken = GenerateToken();
             await passwordResetTokenRepository.AddAsync(new PasswordResetToken
@@ -82,6 +83,10 @@ namespace Elara.Application.Services.Auth
         {
             var payload = await VerifyGoogleTokenAsync(request.IdToken)
                ?? throw new UnauthorizedAccessException("Invalid Google token.");
+
+            if (payload.EmailVerified != "true")    
+                throw new UnauthorizedAccessException("Google email is not verified.");
+            
 
             if (payload.Aud != configuration["Google:ClientId"])
                 throw new UnauthorizedAccessException("Invalid Google token.");
@@ -320,11 +325,16 @@ namespace Elara.Application.Services.Auth
         }
         public class GoogleJsonPayload
         {
+            [JsonPropertyName("email")]
             public string Email { get; set; } = "";
+            [JsonPropertyName("name")]
             public string Name { get; set; } = "";
+            [JsonPropertyName("sub")]
             public string Sub { get; set; } = "";
+            [JsonPropertyName("aud")]
             public string Aud { get; set; } = "";
-            public bool? EmailVerified { get; set; }
+            [JsonPropertyName("email_verified")]
+            public string EmailVerified { get; set; } = "false";
         }
     }
 }

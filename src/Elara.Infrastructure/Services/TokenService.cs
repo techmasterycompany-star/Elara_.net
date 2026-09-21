@@ -1,5 +1,6 @@
 ﻿using Elara.Application.Interfaces.Service.Auth;
-using Microsoft.Extensions.Configuration;
+using Elara.Infrastructure.Options;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -10,14 +11,14 @@ namespace Elara.Infrastructure.Services
 {
     public class TokenService : ITokenService
     {
-        private readonly IConfiguration configuration;
-        public TokenService(IConfiguration configuration) => this.configuration = configuration;
+        private readonly JwtOptions jwtOptions;
+        public TokenService(IOptions<JwtOptions> jwtOptions) => this.jwtOptions = jwtOptions.Value;
        
 
         public string GenerateAccessToken(long userId, string email)
         {
             var key = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(configuration["Jwt:Key"]!));
+                Encoding.UTF8.GetBytes(jwtOptions.Key));
 
             var claims = new List<Claim>
             {
@@ -27,11 +28,10 @@ namespace Elara.Infrastructure.Services
             };
 
             var token = new JwtSecurityToken(
-                issuer: configuration["Jwt:Issuer"],
-                audience: configuration["Jwt:Audience"],
+                issuer: jwtOptions.Issuer,
+                audience: jwtOptions.Audience,
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(
-                    double.Parse(configuration["Jwt:DurationInMinutes"]!)),
+                expires: DateTime.UtcNow.AddMinutes(jwtOptions.DurationInMinutes),
                 signingCredentials: new SigningCredentials(
                     key, SecurityAlgorithms.HmacSha256));
 
@@ -54,10 +54,10 @@ namespace Elara.Infrastructure.Services
                 ValidateAudience = true,
                 ValidateLifetime = false,
                 ValidateIssuerSigningKey = true,
-                ValidIssuer = configuration["Jwt:Issuer"],
-                ValidAudience = configuration["Jwt:Audience"],
+                ValidIssuer = jwtOptions.Issuer,
+                ValidAudience = jwtOptions.Audience,
                 IssuerSigningKey = new SymmetricSecurityKey(
-                    Encoding.UTF8.GetBytes(configuration["Jwt:Key"]!))
+                    Encoding.UTF8.GetBytes(jwtOptions.Key))
             };
 
             var tokenHandler = new JwtSecurityTokenHandler();

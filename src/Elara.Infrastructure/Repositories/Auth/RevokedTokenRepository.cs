@@ -13,11 +13,11 @@ namespace Elara.Infrastructure.Repositories.Auth
 
         public async Task AddAsync(RevokedToken revokedToken)
         {
-            await context.Set<RevokedToken>().AddAsync(revokedToken);
+            await context.RevokedTokens.AddAsync(revokedToken);
             await context.SaveChangesAsync();
         }
         public async Task<bool> IsRevokedAsync(string jti) =>
-            await context.Set<RevokedToken>()
+            await context.RevokedTokens
                 .AnyAsync(rt => rt.Jti == jti);
 
     }

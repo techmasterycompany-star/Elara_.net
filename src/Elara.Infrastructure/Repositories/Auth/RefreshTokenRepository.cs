@@ -12,24 +12,24 @@ namespace Elara.Infrastructure.Repositories.Auth
        
 
         public async Task<RefreshToken?> GetByTokenAsync(string token) =>
-             await context.Set<RefreshToken>()
+             await context.RefreshTokens
                 .FirstOrDefaultAsync(rt => rt.Token == token);
         
 
         public async Task<RefreshToken?> GetActiveTokenByUserIdAsync(long userId) =>
-             await context.Set<RefreshToken>()
+             await context.RefreshTokens
                 .FirstOrDefaultAsync(rt => rt.UserId == userId && !rt.IsRevoked && rt.Expires > DateTime.UtcNow);
         
 
         public async Task AddAsync(RefreshToken refreshToken)
         {
-            await context.Set<RefreshToken>().AddAsync(refreshToken);
+            await context.RefreshTokens.AddAsync(refreshToken);
             await context.SaveChangesAsync();
         }
 
         public async Task UpdateAsync(RefreshToken refreshToken)
         {
-            context.Set<RefreshToken>().Update(refreshToken);
+            context.RefreshTokens.Update(refreshToken);
             await context.SaveChangesAsync();
         }
     }

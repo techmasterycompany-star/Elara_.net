@@ -9,24 +9,19 @@ namespace Elara.Infrastructure.Repositories.Auth
     {
         private readonly AppDbContext context;
 
-        public RoleRepository(AppDbContext context)
-        {
-            this.context = context;
-        }
+        public RoleRepository(AppDbContext context) => this.context = context;
 
-        public async Task<Role?> GetByNameAsync(string name)
-        {
-            return await context.Roles.FirstOrDefaultAsync(r => r.Name.ToLower() == name.ToLower());
-        }
 
-        public async Task<Role?> GetByIdAsync(long id)
-        {
-            return await context.Roles.FindAsync(id);
-        }
+        public async Task<Role?> GetByNameAsync(string name) =>
+            await context.Roles.FirstOrDefaultAsync(r => r.Name.ToLower() == name.ToLower());
+        
 
-        public async Task<List<Role>> GetAllAsync()
-        {
-            return await context.Roles.ToListAsync();
-        }
+        public async Task<Role?> GetByIdAsync(long id) =>
+            await context.Roles.FindAsync(id);
+        
+
+        public async Task<List<Role>> GetAllAsync() =>       
+            await context.Roles.ToListAsync();
+        
     }
 }
