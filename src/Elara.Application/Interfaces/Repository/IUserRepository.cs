@@ -18,5 +18,6 @@ namespace Elara.Application.Interfaces.Repository
         Task<IEnumerable<Role>> GetRolesByIdsAsync(IEnumerable<long> roleIds);
         Task AddUserAsync(User user);
         Task UpdateUserAsync(User user);
+        Task DeleteAddressAsync(Address address);
     }
 }

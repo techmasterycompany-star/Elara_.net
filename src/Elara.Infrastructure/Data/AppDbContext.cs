@@ -37,7 +37,7 @@ namespace Elara.Infrastructure.Data
         public DbSet<Shipment> Shipments => Set<Shipment>();
         public DbSet<ShipmentItem> ShipmentItems => Set<ShipmentItem>();
         public DbSet<Notification> Notifications => Set<Notification>();
-        public DbSet<Transaction> Transactions => Set<Transaction>();
+        public DbSet<Transaction> LoyaltyTransactions => Set<Transaction>();
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         public DbSet<RevokedToken> RevokedTokens => Set<RevokedToken>();
         public DbSet<EmailConfirmation> EmailConfirmations => Set<EmailConfirmation>();
@@ -45,6 +45,11 @@ namespace Elara.Infrastructure.Data
         public DbSet<SellerApplication> SellerApplications => Set<SellerApplication>();
         public DbSet<Banner> Banners => Set<Banner>();
         public DbSet<HomepageSection> HomepageSections => Set<HomepageSection>();
+        public DbSet<Language> Languages => Set<Language>();
+        public DbSet<ResourceString> ResourceStrings => Set<ResourceString>();
+        public DbSet<Referral> Referrals => Set<Referral>();
+        public DbSet<NewsletterSubscription> NewsletterSubscriptions => Set<NewsletterSubscription>();
+        public DbSet<DeviceToken> DeviceTokens => Set<DeviceToken>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
