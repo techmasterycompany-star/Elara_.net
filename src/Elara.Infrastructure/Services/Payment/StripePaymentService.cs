@@ -15,7 +15,7 @@ namespace Elara.Infrastructure.Services.Payment
         {
             _configuration = configuration;
             _logger = logger;
-            
+
             var secretKey = _configuration["Stripe:SecretKey"];
             if (!string.IsNullOrEmpty(secretKey))
             {
@@ -76,7 +76,7 @@ namespace Elara.Infrastructure.Services.Payment
 
                 var service = new RefundService();
                 var refund = await service.CreateAsync(options);
-                
+
                 return refund.Status == "succeeded";
             }
             catch (StripeException ex)

@@ -12,6 +12,9 @@ namespace Elara.Application.DTOs.Checkout
         public PaymentMethodType PaymentMethod { get; set; }
         public PaymentStatus PaymentStatus { get; set; }
         public string? CheckoutUrl { get; set; } = null;
+        public string? ClientSecret { get; set; }
+        public string? TransactionId { get; set; }
+        public string? PaymentProvider { get; set; }
         public string Message { get; set; } = null!;
     }
 }
