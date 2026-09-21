@@ -10,5 +10,6 @@ namespace Elara.Application.Interfaces.Repository
         Task<Order?> GetOrderByIdAsync(long id);
         Task<Order?> GetOrderDetailsAsync(long id);
         Task UpdateOrderAsync(Order order);
+        Task<bool> HasUserPurchasedProductAsync(long userId, long productId);
     }
 }

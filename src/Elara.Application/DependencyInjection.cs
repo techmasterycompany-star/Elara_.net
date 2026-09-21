@@ -31,6 +31,7 @@ namespace Elara.Application
             services.AddScoped<ISellerApplicationService, SellerApplicationService>();
             services.AddScoped<ISellerService, SellerService>();
             services.AddScoped<IProductService, ProductService>();
+            services.AddScoped<IReviewService, ReviewService>();
             services.AddScoped<IHomepageService, HomepageService>();
 
             return services;
