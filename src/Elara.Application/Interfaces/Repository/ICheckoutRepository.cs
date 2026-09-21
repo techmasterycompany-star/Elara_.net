@@ -1,3 +1,4 @@
+using Elara.Application.DTOs.Checkout;
 using Elara.Domain.Entities;
 
 namespace Elara.Application.Interfaces.Repository
@@ -13,5 +14,7 @@ namespace Elara.Application.Interfaces.Repository
         Task<Order> CreateOrderAsync(Order order);
         Task<bool> ClearCartAsync(long cartId);
         Task CreateTransactionAsync(Func<Task> action);
+        Task UpdatePaymentTransactionIdAsync(long paymentId, string transactionId);
+        Task UpdateStockAsync(IEnumerable<CheckoutItemPreviewDto> checkoutItems);
     }
 }
