@@ -7,6 +7,7 @@ using Elara.Infrastructure.Data;
 using Elara.Infrastructure.Repositories;
 using Elara.Infrastructure.Repositories.Auth;
 using Elara.Infrastructure.Services;
+using Elara.Infrastructure.Services.Payment;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -37,6 +38,8 @@ namespace Elara.Infrastructure
             services.AddScoped<IOrderRepository, OrderRepository>();
             services.AddScoped<IShipmentRepository, ShipmentRepository>();
             services.AddScoped<ICheckoutRepository, CheckoutRepository>();
+            services.AddScoped<IPaymentRepository, PaymentRepository>();
+            services.AddScoped<IWalletRepository, WalletRepository>();
             services.AddScoped<ICategoryRepository, CategoryRepository>();
             services.AddScoped<IShippingMethodRepository, ShippingMethodRepository>();
             services.AddScoped<ISellerApplicationRepository, SellerApplicationRepository>();
@@ -48,6 +51,11 @@ namespace Elara.Infrastructure
             services.AddScoped<IProductRepository, ProductRepository>();
             services.AddScoped<IHomepageSectionRepository, HomepageSectionRepository>();
             services.AddScoped<IBannerRepository, BannerRepository>();
+
+            // Payment Gateway Services
+            services.AddHttpClient<IPayPalPaymentService, PayPalPaymentService>();
+            services.AddScoped<IStripePaymentService, StripePaymentService>();
+            services.AddScoped<IWalletService, WalletService>();
 
             return services;
         }
