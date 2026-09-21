@@ -79,9 +79,9 @@ namespace Elara.Infrastructure.Repositories
                 query = query.Where(o =>
                     o.Id.ToString().Contains(search) ||
                     (o.User != null && (o.User.FullName.Contains(search, StringComparison.OrdinalIgnoreCase) || o.User.Email.Contains(search, StringComparison.OrdinalIgnoreCase))) ||
-                    (!string.IsNullOrEmpty(o.GuestFullName) &&  o.GuestFullName.Contains(search,StringComparison.OrdinalIgnoreCase)) ||
-                    (!string.IsNullOrEmpty(o.GuestEmail) &&  o.GuestEmail.Contains(search,StringComparison.OrdinalIgnoreCase)) ||
-                    (!string.IsNullOrEmpty(o.GuestPhoneNumber) &&  o.GuestPhoneNumber.Contains(search,StringComparison.OrdinalIgnoreCase)));
+                    (!string.IsNullOrEmpty(o.GuestFullName) && o.GuestFullName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(o.GuestEmail) && o.GuestEmail.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(o.GuestPhoneNumber) && o.GuestPhoneNumber.Contains(search, StringComparison.OrdinalIgnoreCase)));
             }
 
             // Status
@@ -140,11 +140,11 @@ namespace Elara.Infrastructure.Repositories
             {
                 OrderSortBy.Id => descending ? query.OrderByDescending(o => o.Id) : query.OrderBy(o => o.Id),
 
-                OrderSortBy.OrderDate => descending? query.OrderByDescending(o => o.OrderDate) : query.OrderBy(o => o.OrderDate),
+                OrderSortBy.OrderDate => descending ? query.OrderByDescending(o => o.OrderDate) : query.OrderBy(o => o.OrderDate),
 
-                OrderSortBy.TotalAmount => descending? query.OrderByDescending(o => o.TotalAmount) : query.OrderBy(o => o.TotalAmount),
+                OrderSortBy.TotalAmount => descending ? query.OrderByDescending(o => o.TotalAmount) : query.OrderBy(o => o.TotalAmount),
 
-                OrderSortBy.Status => descending? query.OrderByDescending(o => o.Status) : query.OrderBy(o => o.Status),
+                OrderSortBy.Status => descending ? query.OrderByDescending(o => o.Status) : query.OrderBy(o => o.Status),
 
                 _ => query.OrderByDescending(o => o.OrderDate)
             };
@@ -153,6 +153,7 @@ namespace Elara.Infrastructure.Repositories
         public async Task<Order?> GetOrderByIdAsync(long id)
         {
             return await _context.Orders.Include(o => o.Items)
+                .Include(o => o.Payment)
                 .Include(o => o.Shipments)
                 .Include(o => o.StatusHistory)
                 .FirstOrDefaultAsync(o => o.Id == id);

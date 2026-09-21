@@ -1,5 +1,6 @@
 using AutoMapper;
 using Elara.Application.DTOs.Checkout;
+using Elara.Application.DTOs.Payment;
 using Elara.Application.Exceptions;
 using Elara.Application.Interfaces.Repository;
 using Elara.Application.Interfaces.Service;
@@ -11,11 +12,16 @@ namespace Elara.Application.Services
     public class CheckoutService : ICheckoutService
     {
         private readonly ICheckoutRepository _checkoutRepository;
+        private readonly IPaymentService _paymentService;
         private readonly IMapper _mapper;
 
-        public CheckoutService(ICheckoutRepository checkoutRepository, IMapper mapper)
+        public CheckoutService(
+            ICheckoutRepository checkoutRepository,
+            IPaymentService paymentService,
+            IMapper mapper)
         {
             _checkoutRepository = checkoutRepository;
+            _paymentService = paymentService;
             _mapper = mapper;
         }
 
@@ -73,91 +79,55 @@ namespace Elara.Application.Services
 
         public async Task<CheckoutResponse> ProcessCheckoutAsync(long? userId, string? guestSessionId, CheckoutRequest request)
         {
-            // 1. Get cart items
             var checkoutItems = await GetCheckoutItemsAsync(userId, guestSessionId, request.CartId);
-
-            // 2. Validate items
             await ValidateCheckoutItemsAsync(checkoutItems);
 
-            // 3. Validate shipping
             var shippingMethod = await _checkoutRepository.GetShippingMethodByIdAsync(request.ShippingMethodId);
-
             if (shippingMethod == null)
                 throw new NotFoundException("Shipping method not found");
 
             if (!shippingMethod.IsActive)
                 throw new BadRequestException("Shipping method is not available");
 
-            // 4. Calculate totals
             decimal subtotal = checkoutItems.Sum(x => x.Subtotal);
-
-            decimal discountAmount = 0;
+            decimal discountAmount = 0m;
             PromoCode? appliedPromoCode = null;
 
             if (!string.IsNullOrWhiteSpace(request.PromoCode))
             {
                 appliedPromoCode = await _checkoutRepository.GetPromoCodeByCodeAsync(request.PromoCode);
-
-                if (appliedPromoCode != null &&
-                    IsPromoCodeValid(appliedPromoCode))
-                {
+                if (appliedPromoCode != null && IsPromoCodeValid(appliedPromoCode))
                     discountAmount = CalculateDiscount(subtotal, appliedPromoCode);
-                }
             }
 
             decimal shippingCost = shippingMethod.BaseCost;
-
             decimal totalAmount = subtotal - discountAmount + shippingCost;
 
-
-            // 5. Create Order
             var order = new Order
             {
                 UserId = userId,
-
                 GuestFullName = userId.HasValue ? null : request.ShippingAddress.FullName,
-
                 GuestPhoneNumber = userId.HasValue ? null : request.ShippingAddress.Phone,
-
                 ShippingFullName = request.ShippingAddress.FullName,
-
                 ShippingPhone = request.ShippingAddress.Phone,
-
                 ShippingStreet = request.ShippingAddress.Street,
-
                 ShippingCity = request.ShippingAddress.City,
-
                 ShippingState = request.ShippingAddress.State,
-
                 ShippingPostalCode = request.ShippingAddress.PostalCode,
-
                 ShippingCountry = request.ShippingAddress.Country,
-
                 ShippingMethodId = request.ShippingMethodId,
-
                 PromoCodeId = appliedPromoCode?.Id,
-
                 OrderDate = DateTime.UtcNow,
-
                 Status = OrderStatus.Pending,
-
                 SubTotal = subtotal,
-
                 DiscountAmount = discountAmount,
-
                 ShippingCost = shippingCost,
-
                 TotalAmount = totalAmount,
-
                 CreatedAt = DateTime.UtcNow,
-
                 UpdatedAt = DateTime.UtcNow,
-
                 IsDeleted = false
             };
 
-
-            // 6. Add Order Items
             foreach (var item in checkoutItems)
             {
                 order.Items.Add(new OrderItem
@@ -172,97 +142,52 @@ namespace Elara.Application.Services
                 });
             }
 
-
-            // 7. Create Payment
             var payment = new Payment
             {
                 Method = request.PaymentMethod,
-
                 Provider = GetPaymentProvider(request.PaymentMethod),
-
-                TransactionId = null,
-
                 Amount = totalAmount,
-
                 Status = PaymentStatus.Pending,
-
-                PaidAt = null,
-
                 CreatedAt = DateTime.UtcNow,
-
                 UpdatedAt = DateTime.UtcNow
             };
-
             order.Payment = payment;
 
-
-            // 8. Database transaction
             Order? createdOrder = null;
-
-            await _checkoutRepository.CreateTransactionAsync(
-                async () =>
-                {
-                    createdOrder = await _checkoutRepository.CreateOrderAsync(order);
-
-                    await _checkoutRepository.UpdateStockAsync(checkoutItems);
-
-                    await _checkoutRepository.ClearCartAsync(request.CartId!.Value);
-                });
-
-
-            // 9. COD
-            if (request.PaymentMethod ==
-                PaymentMethodType.CashOnDelivery)
+            await _checkoutRepository.CreateTransactionAsync(async () =>
             {
-                return new CheckoutResponse
-                {
-                    OrderId = createdOrder!.Id,
+                createdOrder = await _checkoutRepository.CreateOrderAsync(order);
+                await _checkoutRepository.UpdateStockAsync(checkoutItems);
+                await _checkoutRepository.ClearCartAsync(request.CartId!.Value);
+            });
 
-                    OrderNumber = $"ORD-{createdOrder.Id:D8}",
-
-                    Status = createdOrder.Status,
-
-                    OrderDate = createdOrder.OrderDate,
-
-                    TotalAmount = createdOrder.TotalAmount,
-
-                    PaymentMethod = payment.Method,
-
-                    PaymentStatus = payment.Status,
-
-                    Message = "Order placed successfully"
-                };
-            }
-
-
-            // 10. Online payment
-            // var checkoutSession = await _paymentService.CreateCheckoutSessionAsync(createdOrder!.Id, totalAmount);
-
-
-            // payment.TransactionId = checkoutSession.SessionId;
-
-            // await _checkoutRepository.UpdatePaymentTransactionIdAsync(payment.Id, checkoutSession.SessionId);
-
+            var paymentResponse = await _paymentService.ProcessPaymentAsync(new PaymentRequestDto
+            {
+                OrderId = createdOrder!.Id,
+                PaymentMethod = request.PaymentMethod,
+                Amount = totalAmount,
+                ReturnUrl = request.ReturnUrl,
+                CancelUrl = request.CancelUrl,
+                PayPalEmail = request.PayPalEmail,
+                CardDetails = request.CardDetails
+            });
 
             return new CheckoutResponse
             {
                 OrderId = createdOrder.Id,
-
                 OrderNumber = $"ORD-{createdOrder.Id:D8}",
-
                 Status = createdOrder.Status,
-
                 OrderDate = createdOrder.OrderDate,
-
                 TotalAmount = createdOrder.TotalAmount,
-
                 PaymentMethod = payment.Method,
-
-                PaymentStatus = payment.Status,
-
-                // CheckoutUrl = checkoutSession.CheckoutUrl,
-
-                Message = "Redirect to payment"
+                PaymentStatus = paymentResponse.Status,
+                CheckoutUrl = paymentResponse.RedirectUrl,
+                ClientSecret = paymentResponse.ClientSecret,
+                TransactionId = paymentResponse.TransactionId,
+                PaymentProvider = paymentResponse.Provider,
+                Message = paymentResponse.Message ?? (request.PaymentMethod == PaymentMethodType.CashOnDelivery
+                    ? "Order placed successfully"
+                    : "Payment action required")
             };
         }
 
