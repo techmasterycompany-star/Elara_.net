@@ -73,65 +73,91 @@ namespace Elara.Application.Services
 
         public async Task<CheckoutResponse> ProcessCheckoutAsync(long? userId, string? guestSessionId, CheckoutRequest request)
         {
-            // Get checkout items
+            // 1. Get cart items
             var checkoutItems = await GetCheckoutItemsAsync(userId, guestSessionId, request.CartId);
 
-            // Validate all items
+            // 2. Validate items
             await ValidateCheckoutItemsAsync(checkoutItems);
 
-            // Validate shipping method
+            // 3. Validate shipping
             var shippingMethod = await _checkoutRepository.GetShippingMethodByIdAsync(request.ShippingMethodId);
+
             if (shippingMethod == null)
                 throw new NotFoundException("Shipping method not found");
 
             if (!shippingMethod.IsActive)
                 throw new BadRequestException("Shipping method is not available");
 
-            // Calculate totals
-            decimal subtotal = checkoutItems.Sum(item => item.Subtotal);
-            decimal discountAmount = 0m;
+            // 4. Calculate totals
+            decimal subtotal = checkoutItems.Sum(x => x.Subtotal);
+
+            decimal discountAmount = 0;
             PromoCode? appliedPromoCode = null;
 
             if (!string.IsNullOrWhiteSpace(request.PromoCode))
             {
                 appliedPromoCode = await _checkoutRepository.GetPromoCodeByCodeAsync(request.PromoCode);
-                if (appliedPromoCode != null && IsPromoCodeValid(appliedPromoCode))
+
+                if (appliedPromoCode != null &&
+                    IsPromoCodeValid(appliedPromoCode))
                 {
                     discountAmount = CalculateDiscount(subtotal, appliedPromoCode);
                 }
             }
 
             decimal shippingCost = shippingMethod.BaseCost;
+
             decimal totalAmount = subtotal - discountAmount + shippingCost;
 
-            // Create order
+
+            // 5. Create Order
             var order = new Order
             {
                 UserId = userId,
+
                 GuestFullName = userId.HasValue ? null : request.ShippingAddress.FullName,
-                GuestEmail = userId.HasValue ? null : request.ShippingAddress.FullName,
+
                 GuestPhoneNumber = userId.HasValue ? null : request.ShippingAddress.Phone,
+
                 ShippingFullName = request.ShippingAddress.FullName,
+
                 ShippingPhone = request.ShippingAddress.Phone,
+
                 ShippingStreet = request.ShippingAddress.Street,
+
                 ShippingCity = request.ShippingAddress.City,
+
                 ShippingState = request.ShippingAddress.State,
+
                 ShippingPostalCode = request.ShippingAddress.PostalCode,
+
                 ShippingCountry = request.ShippingAddress.Country,
+
                 ShippingMethodId = request.ShippingMethodId,
+
                 PromoCodeId = appliedPromoCode?.Id,
+
                 OrderDate = DateTime.UtcNow,
+
                 Status = OrderStatus.Pending,
+
                 SubTotal = subtotal,
+
                 DiscountAmount = discountAmount,
+
                 ShippingCost = shippingCost,
+
                 TotalAmount = totalAmount,
+
                 CreatedAt = DateTime.UtcNow,
+
                 UpdatedAt = DateTime.UtcNow,
+
                 IsDeleted = false
             };
 
-            // Add order items
+
+            // 6. Add Order Items
             foreach (var item in checkoutItems)
             {
                 order.Items.Add(new OrderItem
@@ -146,41 +172,97 @@ namespace Elara.Application.Services
                 });
             }
 
-            // Create payment record
+
+            // 7. Create Payment
             var payment = new Payment
             {
                 Method = request.PaymentMethod,
+
                 Provider = GetPaymentProvider(request.PaymentMethod),
+
                 TransactionId = null,
+
                 Amount = totalAmount,
+
                 Status = PaymentStatus.Pending,
+
                 PaidAt = null,
+
                 CreatedAt = DateTime.UtcNow,
+
                 UpdatedAt = DateTime.UtcNow
             };
 
             order.Payment = payment;
 
-            Order? createdOrder = null;
-            await _checkoutRepository.CreateTransactionAsync(async () =>
-            {
-                createdOrder =
-                    await _checkoutRepository.CreateOrderAsync(order);
-            });
 
-            // var session = await stripeService.CreateCheckoutSessionAsync(data);
-            // payment.TransactionId = session.Id;
+            // 8. Database transaction
+            Order? createdOrder = null;
+
+            await _checkoutRepository.CreateTransactionAsync(
+                async () =>
+                {
+                    createdOrder = await _checkoutRepository.CreateOrderAsync(order);
+
+                    await _checkoutRepository.UpdateStockAsync(checkoutItems);
+
+                    await _checkoutRepository.ClearCartAsync(request.CartId!.Value);
+                });
+
+
+            // 9. COD
+            if (request.PaymentMethod ==
+                PaymentMethodType.CashOnDelivery)
+            {
+                return new CheckoutResponse
+                {
+                    OrderId = createdOrder!.Id,
+
+                    OrderNumber = $"ORD-{createdOrder.Id:D8}",
+
+                    Status = createdOrder.Status,
+
+                    OrderDate = createdOrder.OrderDate,
+
+                    TotalAmount = createdOrder.TotalAmount,
+
+                    PaymentMethod = payment.Method,
+
+                    PaymentStatus = payment.Status,
+
+                    Message = "Order placed successfully"
+                };
+            }
+
+
+            // 10. Online payment
+            // var checkoutSession = await _paymentService.CreateCheckoutSessionAsync(createdOrder!.Id, totalAmount);
+
+
+            // payment.TransactionId = checkoutSession.SessionId;
+
+            // await _checkoutRepository.UpdatePaymentTransactionIdAsync(payment.Id, checkoutSession.SessionId);
+
 
             return new CheckoutResponse
             {
                 OrderId = createdOrder.Id,
+
                 OrderNumber = $"ORD-{createdOrder.Id:D8}",
+
                 Status = createdOrder.Status,
+
                 OrderDate = createdOrder.OrderDate,
+
                 TotalAmount = createdOrder.TotalAmount,
+
                 PaymentMethod = payment.Method,
+
                 PaymentStatus = payment.Status,
-                Message = "Order placed successfully"
+
+                // CheckoutUrl = checkoutSession.CheckoutUrl,
+
+                Message = "Redirect to payment"
             };
         }
 

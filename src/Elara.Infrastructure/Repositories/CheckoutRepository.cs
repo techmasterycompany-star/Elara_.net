@@ -1,3 +1,4 @@
+using Elara.Application.DTOs.Checkout;
 using Elara.Application.Interfaces.Repository;
 using Elara.Domain.Entities;
 using Elara.Infrastructure.Data;
@@ -94,6 +95,34 @@ namespace Elara.Infrastructure.Repositories
                 await transaction.RollbackAsync();
                 throw;
             }
+        }
+
+        public async Task UpdatePaymentTransactionIdAsync(long paymentId, string transactionId)
+        {
+            var payment = await _context.Payments
+                .FirstOrDefaultAsync(p => p.Id == paymentId);
+
+            if (payment == null)
+            {
+                throw new InvalidOperationException($"Payment with ID {paymentId} not found.");
+            }
+            payment.TransactionId = transactionId;
+            payment.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+        }
+        
+        public async Task UpdateStockAsync(IEnumerable<CheckoutItemPreviewDto> checkoutItems)
+        {
+            foreach (var item in checkoutItems)
+            {
+                var product = await _context.Products
+                    .FirstAsync(p => p.Id == item.ProductId);
+
+                product.StockQuantity -= item.Quantity;
+            }
+
+            await _context.SaveChangesAsync();
         }
     }
 }
