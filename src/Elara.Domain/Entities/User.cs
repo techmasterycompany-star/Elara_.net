@@ -23,5 +23,6 @@ namespace Elara.Domain.Entities
         public ICollection<Notification> Notifications { get; set; } = [];
         public ICollection<Transaction> TransactionTypes { get; set; } = [];
         public ICollection<SellerApplication> SellerApplications { get; set; } = [];
+        public Wallet? Wallet { get; set; }
     }
 }

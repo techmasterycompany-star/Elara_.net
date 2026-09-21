@@ -50,6 +50,8 @@ namespace Elara.Infrastructure.Data
         public DbSet<Referral> Referrals => Set<Referral>();
         public DbSet<NewsletterSubscription> NewsletterSubscriptions => Set<NewsletterSubscription>();
         public DbSet<DeviceToken> DeviceTokens => Set<DeviceToken>();
+        public DbSet<Wallet> Wallets => Set<Wallet>();
+        public DbSet<WalletTransaction> WalletTransactions => Set<WalletTransaction>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -90,11 +92,20 @@ namespace Elara.Infrastructure.Data
             modelBuilder.Entity<Shipment>()
                 .HasQueryFilter(x => !x.IsDeleted);
 
+            modelBuilder.Entity<Payment>()
+                .HasQueryFilter(x => !x.IsDeleted);
+
             modelBuilder.Entity<Role>().HasData(
                 new Role { Id = 1, Name = Elara.Domain.Enums.Role.Admin.ToString() },
                 new Role { Id = 2, Name = Elara.Domain.Enums.Role.Seller.ToString() },
                 new Role { Id = 3, Name = Elara.Domain.Enums.Role.Customer.ToString() }
             );
+
+            modelBuilder.Entity<Wallet>()
+                .HasQueryFilter(x => !x.IsDeleted);
+
+            modelBuilder.Entity<WalletTransaction>()
+                .HasQueryFilter(x => !x.IsDeleted);
 
             base.OnModelCreating(modelBuilder);
         }

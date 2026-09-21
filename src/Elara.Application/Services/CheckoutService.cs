@@ -1,5 +1,6 @@
 using AutoMapper;
 using Elara.Application.DTOs.Checkout;
+using Elara.Application.DTOs.Payment;
 using Elara.Application.Exceptions;
 using Elara.Application.Interfaces.Repository;
 using Elara.Application.Interfaces.Service;
@@ -11,11 +12,16 @@ namespace Elara.Application.Services
     public class CheckoutService : ICheckoutService
     {
         private readonly ICheckoutRepository _checkoutRepository;
+        private readonly IPaymentService _paymentService;
         private readonly IMapper _mapper;
 
-        public CheckoutService(ICheckoutRepository checkoutRepository, IMapper mapper)
+        public CheckoutService(
+            ICheckoutRepository checkoutRepository,
+            IPaymentService paymentService,
+            IMapper mapper)
         {
             _checkoutRepository = checkoutRepository;
+            _paymentService = paymentService;
             _mapper = mapper;
         }
 
@@ -73,13 +79,9 @@ namespace Elara.Application.Services
 
         public async Task<CheckoutResponse> ProcessCheckoutAsync(long? userId, string? guestSessionId, CheckoutRequest request)
         {
-            // Get checkout items
             var checkoutItems = await GetCheckoutItemsAsync(userId, guestSessionId, request.CartId);
-
-            // Validate all items
             await ValidateCheckoutItemsAsync(checkoutItems);
 
-            // Validate shipping method
             var shippingMethod = await _checkoutRepository.GetShippingMethodByIdAsync(request.ShippingMethodId);
             if (shippingMethod == null)
                 throw new NotFoundException("Shipping method not found");
@@ -87,8 +89,7 @@ namespace Elara.Application.Services
             if (!shippingMethod.IsActive)
                 throw new BadRequestException("Shipping method is not available");
 
-            // Calculate totals
-            decimal subtotal = checkoutItems.Sum(item => item.Subtotal);
+            decimal subtotal = checkoutItems.Sum(x => x.Subtotal);
             decimal discountAmount = 0m;
             PromoCode? appliedPromoCode = null;
 
@@ -96,20 +97,16 @@ namespace Elara.Application.Services
             {
                 appliedPromoCode = await _checkoutRepository.GetPromoCodeByCodeAsync(request.PromoCode);
                 if (appliedPromoCode != null && IsPromoCodeValid(appliedPromoCode))
-                {
                     discountAmount = CalculateDiscount(subtotal, appliedPromoCode);
-                }
             }
 
             decimal shippingCost = shippingMethod.BaseCost;
             decimal totalAmount = subtotal - discountAmount + shippingCost;
 
-            // Create order
             var order = new Order
             {
                 UserId = userId,
                 GuestFullName = userId.HasValue ? null : request.ShippingAddress.FullName,
-                GuestEmail = userId.HasValue ? null : request.ShippingAddress.FullName,
                 GuestPhoneNumber = userId.HasValue ? null : request.ShippingAddress.Phone,
                 ShippingFullName = request.ShippingAddress.FullName,
                 ShippingPhone = request.ShippingAddress.Phone,
@@ -131,7 +128,6 @@ namespace Elara.Application.Services
                 IsDeleted = false
             };
 
-            // Add order items
             foreach (var item in checkoutItems)
             {
                 order.Items.Add(new OrderItem
@@ -146,30 +142,35 @@ namespace Elara.Application.Services
                 });
             }
 
-            // Create payment record
             var payment = new Payment
             {
                 Method = request.PaymentMethod,
                 Provider = GetPaymentProvider(request.PaymentMethod),
-                TransactionId = null,
                 Amount = totalAmount,
                 Status = PaymentStatus.Pending,
-                PaidAt = null,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
-
             order.Payment = payment;
 
             Order? createdOrder = null;
             await _checkoutRepository.CreateTransactionAsync(async () =>
             {
-                createdOrder =
-                    await _checkoutRepository.CreateOrderAsync(order);
+                createdOrder = await _checkoutRepository.CreateOrderAsync(order);
+                await _checkoutRepository.UpdateStockAsync(checkoutItems);
+                await _checkoutRepository.ClearCartAsync(request.CartId!.Value);
             });
 
-            // var session = await stripeService.CreateCheckoutSessionAsync(data);
-            // payment.TransactionId = session.Id;
+            var paymentResponse = await _paymentService.ProcessPaymentAsync(new PaymentRequestDto
+            {
+                OrderId = createdOrder!.Id,
+                PaymentMethod = request.PaymentMethod,
+                Amount = totalAmount,
+                ReturnUrl = request.ReturnUrl,
+                CancelUrl = request.CancelUrl,
+                PayPalEmail = request.PayPalEmail,
+                CardDetails = request.CardDetails
+            });
 
             return new CheckoutResponse
             {
@@ -179,8 +180,14 @@ namespace Elara.Application.Services
                 OrderDate = createdOrder.OrderDate,
                 TotalAmount = createdOrder.TotalAmount,
                 PaymentMethod = payment.Method,
-                PaymentStatus = payment.Status,
-                Message = "Order placed successfully"
+                PaymentStatus = paymentResponse.Status,
+                CheckoutUrl = paymentResponse.RedirectUrl,
+                ClientSecret = paymentResponse.ClientSecret,
+                TransactionId = paymentResponse.TransactionId,
+                PaymentProvider = paymentResponse.Provider,
+                Message = paymentResponse.Message ?? (request.PaymentMethod == PaymentMethodType.CashOnDelivery
+                    ? "Order placed successfully"
+                    : "Payment action required")
             };
         }
 
