@@ -1,0 +1,186 @@
+name: CI/CD Pipeline - MonsterASP Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  DOTNET_VERSION: '9.0.x'
+  SOLUTION_FILE: Elara.sln
+  PROJECT_FILE: src/Elara.API/Elara.API.csproj
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          cache: true
+
+      - name: Restore dependencies
+        run: dotnet restore ${{ env.SOLUTION_FILE }}
+
+      - name: Build solution
+        run: dotnet build ${{ env.SOLUTION_FILE }} --configuration Release --no-restore
+
+      - name: Run tests
+        run: dotnet test ${{ env.SOLUTION_FILE }} --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage"
+
+  build-deploy-package:
+    name: Build Deploy Package
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          cache: true
+
+      - name: Publish API for deployment
+        run: |
+          dotnet publish ${{ env.PROJECT_FILE }} \
+            --configuration Release \
+            --output ./deploy-package \
+            --self-contained false \
+            /p:UseAppHost=false \
+            /p:PublishTrimmed=false
+
+      - name: Copy configuration files
+        run: |
+          cp src/Elara.API/appsettings.json ./deploy-package/appsettings.json
+          cp src/Elara.API/appsettings.Production.json ./deploy-package/appsettings.Production.json 2>/dev/null || true
+
+      - name: Create web.config for IIS
+        run: |
+          cat > ./deploy-package/web.config << 'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <location path="." inheritInChildApplications="false">
+    <system.webServer>
+      <handlers>
+        <add name="aspNetCore" path="*" verb="*" modules="AspNetCoreModuleV2" resourceType="Unspecified" />
+      </handlers>
+      <aspNetCore processPath="dotnet" arguments="Elara.API.dll" stdoutLogEnabled="false" stdoutLogFile=".\logs\stdout" hostingModel="inprocess" />
+    </system.webServer>
+  </location>
+</configuration>
+EOF
+
+      - name: Create logs directory
+        run: mkdir -p ./deploy-package/logs
+
+      - name: Upload deploy package as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-package
+          path: ./deploy-package/
+          retention-days: 7
+
+  deploy-monsterasp-ftp:
+    name: Deploy to MonsterASP via FTP
+    runs-on: ubuntu-latest
+    needs: build-deploy-package
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+
+    steps:
+      - name: Download deploy package
+        uses: actions/download-artifact@v4
+        with:
+          name: deploy-package
+          path: ./deploy-package
+
+      - name: Deploy to MonsterASP via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.MONSTERASP_FTP_HOST }}
+          username: ${{ secrets.MONSTERASP_FTP_USERNAME }}
+          password: ${{ secrets.MONSTERASP_FTP_PASSWORD }}
+          server-dir: ${{ secrets.MONSTERASP_FTP_DIR }}/
+          local-dir: ./deploy-package/
+          dangerous-clean-slate: false
+          exclude: |
+            **/.git*
+            **/.github/*
+            **/*.md
+            **/Dockerfile
+            **/docker-compose*.yml
+
+      - name: Deployment Summary
+        run: |
+          echo "✅ Deployment to MonsterASP completed!"
+          echo "📦 Package deployed to: ${{ secrets.MONSTERASP_FTP_DIR }}"
+          echo "🔗 Your site should be live at your MonsterASP domain"
+          echo ""
+          echo "⚠️  IMPORTANT: Run database migrations after deployment:"
+          echo "   1. Connect to your MonsterASP SQL Server via SSMS"
+          echo "   2. Run the migration scripts from: src/Elara.Infrastructure/Migrations/"
+          echo "   3. Or use: dotnet ef database update --connection \"your-connection-string\""
+
+  docker-build-push:
+    name: Build & Push Docker Image (Optional)
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

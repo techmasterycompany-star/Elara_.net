@@ -1,0 +1,6 @@
+@Elara.API_HostAddress = http://localhost:5047
+
+GET {{Elara.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

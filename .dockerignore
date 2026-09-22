@@ -1,0 +1,49 @@
+# Build outputs
+**/bin/
+**/obj/
+**/out/
+
+# IDE & Editor
+.vs/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Logs
+*.log
+
+# Environment files (keep .env.example if you have one)
+.env
+.env.local
+.env.*.local
+
+# Test results
+**/TestResults/
+**/*.trx
+
+# NuGet
+**/packages/
+*.nupkg
+*.snupkg
+
+# Database
+*.mdf
+*.ldf
+
+# Migration snapshots (keep actual migrations)
+**/Migrations/*.Designer.cs
+**/Migrations/*ModelSnapshot.cs
