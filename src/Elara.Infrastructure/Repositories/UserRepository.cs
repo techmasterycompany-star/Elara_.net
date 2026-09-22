@@ -93,5 +93,11 @@ namespace Elara.Infrastructure.Repositories
             context.Users.Update(user);
             await context.SaveChangesAsync();
         }
+
+        public async Task DeleteAddressAsync(Address address)
+        {
+            context.Addresses.Remove(address);
+            await context.SaveChangesAsync();
+        }
     }
 }

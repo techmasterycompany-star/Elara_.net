@@ -25,9 +25,7 @@ namespace Elara.Application.Services
             _storageService = cloudinaryService;
             _mapper = mapper;
         }
-
         // Admin
-
         public async Task<PaginatedResponse<ProductListDto>> GetAdminProductsAsync(ProductQuery query)
         {
             var result = await _productRepository.GetProductsAsync(query);
@@ -427,7 +425,7 @@ namespace Elara.Application.Services
             if (!images.Any())
                 throw new BadRequestException("Images are required.");
 
-            if(product.Images.Count == 0)
+            if (product.Images.Count == 0)
                 throw new BadRequestException("The product has no images to reorder.");
 
             var productImageIds = product.Images.Select(x => x.Id).ToHashSet();
@@ -450,7 +448,7 @@ namespace Elara.Application.Services
                 image.UpdatedAt = DateTime.UtcNow;
             }
         }
-        
+
         private async Task UpdateImageDisplayOrderAsync(Product product, long imageId, int newDisplayOrder)
         {
             var image = GetProductImage(product, imageId);

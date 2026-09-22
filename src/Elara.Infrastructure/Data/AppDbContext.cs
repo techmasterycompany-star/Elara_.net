@@ -45,6 +45,11 @@ namespace Elara.Infrastructure.Data
         public DbSet<SellerApplication> SellerApplications => Set<SellerApplication>();
         public DbSet<Banner> Banners => Set<Banner>();
         public DbSet<HomepageSection> HomepageSections => Set<HomepageSection>();
+        public DbSet<Language> Languages => Set<Language>();
+        public DbSet<ResourceString> ResourceStrings => Set<ResourceString>();
+        public DbSet<Referral> Referrals => Set<Referral>();
+        public DbSet<NewsletterSubscription> NewsletterSubscriptions => Set<NewsletterSubscription>();
+        public DbSet<DeviceToken> DeviceTokens => Set<DeviceToken>();
         public DbSet<Wallet> Wallets => Set<Wallet>();
         public DbSet<WalletTransaction> WalletTransactions => Set<WalletTransaction>();
         public DbSet<ResourceString> ResourceStrings => Set<ResourceString>();

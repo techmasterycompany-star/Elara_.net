@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Elara.API.Controllers
 {
     [ApiController]
-    [Route("api")]
+    [Route("api/v1")]
     public class LanguagesController : ControllerBase
     {
         private readonly ILocalizationService _localizationService;

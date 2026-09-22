@@ -66,6 +66,17 @@ namespace Elara.Application.Services.Auth
             await repo.UpdateUserAsync(user);
         }
 
+        public async Task DeleteProfileAsync(long userId)
+        {
+            var user = await repo.GetByIdAsync(userId)
+                ?? throw new KeyNotFoundException("User not found.");
+
+            user.IsDeleted = true;
+            user.IsActive = false;
+
+            await repo.UpdateUserAsync(user);
+        }
+
         public async Task<IList<AddressDto>> GetAddressesAsync(long userId)
         {
             var user = await repo.GetByIdWithAddressesAsync(userId)
@@ -120,8 +131,53 @@ namespace Elara.Application.Services.Auth
             var address = user.Addresses.FirstOrDefault(a => a.Id == addressId)
                 ?? throw new KeyNotFoundException("Address not found.");
 
-            user.Addresses.Remove(address);
+            await repo.DeleteAddressAsync(address);
+        }
+
+        public async Task SetDefaultAddressAsync(long userId, long addressId)
+        {
+            var user = await repo.GetByIdWithAddressesAsync(userId)
+                ?? throw new KeyNotFoundException("User not found.");
+
+            var address = user.Addresses.FirstOrDefault(a => a.Id == addressId)
+                ?? throw new KeyNotFoundException("Address not found.");
+
+            foreach (var item in user.Addresses)
+            {
+                item.IsDefault = item.Id == addressId;
+            }
+
             await repo.UpdateUserAsync(user);
+        }
+
+        public async Task<AddressDto> UpdateAddressAsync(long userId, long addressId, UpdateAddressRequest request)
+        {
+            var user = await repo.GetByIdWithAddressesAsync(userId)
+               ?? throw new KeyNotFoundException("User not found.");
+
+            var address = user.Addresses.FirstOrDefault(a => a.Id == addressId)
+                ?? throw new KeyNotFoundException("Address not found.");
+
+            address.Label = request.Label;
+            address.Street = request.Street;
+            address.City = request.City;
+            address.State = request.State;
+            address.PostalCode = request.PostalCode;
+            address.Country = request.Country;
+
+            await repo.UpdateUserAsync(user);
+
+            return new AddressDto
+            {
+                Id = address.Id,
+                Label = address.Label,
+                Street = address.Street,
+                City = address.City,
+                State = address.State,
+                PostalCode = address.PostalCode,
+                Country = address.Country,
+                IsDefault = address.IsDefault
+            };
         }
 
         public async Task<UserProfileDto> UpdateProfileAsync(long userId, UpdateProfileRequest request)

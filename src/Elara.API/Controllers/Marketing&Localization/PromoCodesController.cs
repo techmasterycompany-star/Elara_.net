@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Elara.API.Controllers
 {
     [ApiController]
-    [Route("api/promotions")]
+    [Route("api/v1/promotions")]
     public class PromoCodesController : ControllerBase
     {
         private readonly IPromoCodeService _promoCodeService;
