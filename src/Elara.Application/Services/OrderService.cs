@@ -113,7 +113,7 @@ namespace Elara.Application.Services
             if (order == null) throw new NotFoundException("Order Not Found");
 
             // validate business rules
-            if (order.Status == updateRequest.Status) 
+            if (order.Status == updateRequest.Status)
                 throw new ConflictException($"Order is already {updateRequest.Status}.");
 
             if (!IsValidTransition(order.Status, updateRequest.Status))
@@ -127,11 +127,15 @@ namespace Elara.Application.Services
 
             //Update status
             order.Status = updateRequest.Status;
-            order.StatusHistory.Add(new OrderStatusHistory { 
+            order.StatusHistory.Add(new OrderStatusHistory
+            {
                 OrderId = orderId,
-                Status = updateRequest.Status.ToString(), 
-                CreatedAt = DateTime.UtcNow, 
-                UpdatedAt = DateTime.UtcNow 
+                Status = updateRequest.Status.ToString(),
+                Notes = string.IsNullOrWhiteSpace(updateRequest.Notes)
+                    ? "Order status updated."
+                    : updateRequest.Notes,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             });
 
             await _orderRepository.UpdateOrderAsync(order);
@@ -200,6 +204,7 @@ namespace Elara.Application.Services
             {
                 OrderId = order.Id,
                 Status = OrderStatus.Cancelled.ToString(),
+                Notes = "Order cancelled by customer.",
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             });

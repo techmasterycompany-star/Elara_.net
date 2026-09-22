@@ -260,6 +260,7 @@ namespace Elara.Application.Services
             {
                 OrderId = order.Id,
                 Status = OrderStatus.Confirmed.ToString(),
+                Notes = "Order confirmed after successful payment.",
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             });
@@ -309,6 +310,7 @@ namespace Elara.Application.Services
                 {
                     OrderId = order.Id,
                     Status = OrderStatus.Cancelled.ToString(),
+                    Notes = "Order cancelled because the payment failed or was cancelled.",
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 });

@@ -71,7 +71,7 @@ namespace Elara.Application.Services
             if (shipment == null) throw new NotFoundException("Shipment Not Found");
 
             // validate business rules
-            if (shipment.Status == updateRequest.Status) 
+            if (shipment.Status == updateRequest.Status)
                 throw new ConflictException($"Shipment is already {updateRequest.Status}.");
             if (!IsValidTransition(shipment.Status, updateRequest.Status))
                 throw new ConflictException($"Cannot change shipment status from {shipment.Status} to {updateRequest.Status}.");
@@ -123,7 +123,7 @@ namespace Elara.Application.Services
             if (shipments.Count == 0)
                 return;
 
-            var newStatus = shipments.All(s => s.Status == ShipmentStatus.Delivered) ? OrderStatus.Delivered 
+            var newStatus = shipments.All(s => s.Status == ShipmentStatus.Delivered) ? OrderStatus.Delivered
                 : shipments.All(s => s.Status != ShipmentStatus.Pending) ? OrderStatus.Shipped : order.Status;
 
             if (newStatus != order.Status)
@@ -134,6 +134,7 @@ namespace Elara.Application.Services
                 {
                     OrderId = orderId,
                     Status = newStatus.ToString(),
+                    Notes = "Order status updated based on shipment statuses.",
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 });
