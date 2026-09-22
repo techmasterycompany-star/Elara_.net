@@ -71,21 +71,8 @@ jobs:
           cp src/Elara.API/appsettings.json ./deploy-package/appsettings.json
           cp src/Elara.API/appsettings.Production.json ./deploy-package/appsettings.Production.json 2>/dev/null || true
 
-      - name: Create web.config for IIS
-        run: |
-          cat > ./deploy-package/web.config << 'EOF'
-<?xml version="1.0" encoding="utf-8"?>
-<configuration>
-  <location path="." inheritInChildApplications="false">
-    <system.webServer>
-      <handlers>
-        <add name="aspNetCore" path="*" verb="*" modules="AspNetCoreModuleV2" resourceType="Unspecified" />
-      </handlers>
-      <aspNetCore processPath="dotnet" arguments="Elara.API.dll" stdoutLogEnabled="false" stdoutLogFile=".\logs\stdout" hostingModel="inprocess" />
-    </system.webServer>
-  </location>
-</configuration>
-EOF
+      - name: Copy web.config for IIS
+        run: cp .github/workflows/web.config ./deploy-package/web.config
 
       - name: Create logs directory
         run: mkdir -p ./deploy-package/logs
@@ -130,11 +117,5 @@ EOF
 
       - name: Deployment Summary
         run: |
-          echo "✅ Deployment to MonsterASP completed!"
-          echo "📦 Package deployed to: ${{ secrets.MONSTERASP_FTP_DIR }}"
-          echo "🔗 Your site should be live at your MonsterASP domain"
-          echo ""
-          echo "⚠️  IMPORTANT: Run database migrations after deployment:"
-          echo "   1. Connect to your MonsterASP SQL Server via SSMS"
-          echo "   2. Run the migration scripts from: src/Elara.Infrastructure/Migrations/"
-          echo "   3. Or use: dotnet ef database update --connection \"your-connection-string\""
+          echo "Deployment to MonsterASP completed!"
+          echo "Your site should be live at your MonsterASP domain"
