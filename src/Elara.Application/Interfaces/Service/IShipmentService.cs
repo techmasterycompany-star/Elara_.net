@@ -13,5 +13,7 @@ namespace Elara.Application.Interfaces.Service
         Task<SellerShipmentDetailsDto> GetSellerShipmentByIdAsync(long shipmentId, long userId);
         Task<SellerShipmentDetailsDto> CreateSellerShipmentAsync(long orderId, long userId, CreateSellerShipmentDto dto);
         Task UpdateSellerShipmentAsync(long shipmentId, long userId, UpdateSellerShipmentDto dto);
+        Task<IEnumerable<CustomerShipmentListDto>> GetCustomerShipmentsByOrderIdAsync(long orderId, long userId);
+        Task<CustomerShipmentDetailsDto> GetCustomerShipmentByIdAsync(long orderId, long shipmentId, long userId);
     }
 }

@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Elara.API.Controllers
 {
     [ApiController]
-    [Route("api/newsletter")]
+    [Route("api/v1/newsletter")]
     public class NewsletterController : ControllerBase
     {
         private readonly INewsletterService _newsletterService;

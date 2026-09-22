@@ -6,7 +6,7 @@ using System.Security.Claims;
 namespace Elara.API.Controllers
 {
     [ApiController]
-    [Route("api/devices")]
+    [Route("api/v1/devices")]
     [Authorize]
     public class DeviceTokensController : ControllerBase
     {

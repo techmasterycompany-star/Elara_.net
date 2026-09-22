@@ -12,5 +12,8 @@ namespace Elara.Application.Interfaces.Repository
         Task<Order?> GetOrderByIdAsync(long id);
         Task<Order?> GetOrderDetailsAsync(long id);
         Task UpdateOrderAsync(Order order);
+        Task<PaginationQueryResult<Order>> GetCustomerOrdersAsync(long userId, PaginationRequest request);
+        Task<Order?> GetCustomerOrderDetailsAsync(long orderId, long userId);
+        Task<List<OrderStatusHistory>> GetOrderStatusHistoryAsync(long orderId, long userId);
     }
 }

@@ -6,7 +6,7 @@ using System.Security.Claims;
 namespace Elara.API.Controllers
 {
     [ApiController]
-    [Route("api/loyalty")]
+    [Route("api/v1/loyalty")]
     [Authorize]
     public class LoyaltyController : ControllerBase
     {
