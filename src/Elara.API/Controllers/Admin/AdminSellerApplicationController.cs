@@ -39,14 +39,14 @@ namespace Elara.API.Controllers.Admin
         public async Task<IActionResult> ApproveApplication(long applicationId)
         {
             await _sellerApplicationService.ApproveApplicationAsync(applicationId);
-            return StatusCode(204, ApiResponse<string>.SuccessResponse("Application approved successfully."));
+            return Ok(ApiResponse<string>.SuccessResponse("Application approved successfully."));
         }
 
         [HttpPatch("{applicationId:long}/reject")]
         public async Task<IActionResult> RejectApplication(long applicationId,[FromBody] RejectSellerApplicationDto request)
         {
             await _sellerApplicationService.RejectApplicationAsync(applicationId, request);
-            return StatusCode(204, ApiResponse<string>.SuccessResponse("Application rejected successfully."));
+            return Ok(ApiResponse<string>.SuccessResponse("Application rejected successfully."));
         }
     }
 }

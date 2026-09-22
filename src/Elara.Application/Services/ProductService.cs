@@ -105,9 +105,6 @@ namespace Elara.Application.Services
             if (product == null)
                 throw new NotFoundException("Product not found.");
 
-            foreach (var image in product.Images)
-                await _storageService.DeleteAsync(image.ImagePublicId);
-
             product.IsDeleted = true;
             product.DeletedAt = DateTime.UtcNow;
             product.UpdatedAt = DateTime.UtcNow;
@@ -208,9 +205,6 @@ namespace Elara.Application.Services
 
             if (product == null)
                 throw new NotFoundException("Product not found.");
-
-            foreach (var image in product.Images)
-                await _storageService.DeleteAsync(image.ImagePublicId);
 
             product.IsDeleted = true;
             product.DeletedAt = DateTime.UtcNow;
@@ -403,11 +397,20 @@ namespace Elara.Application.Services
         {
             var image = GetProductImage(product, imageId);
 
-            await _storageService.DeleteAsync(image.ImagePublicId);
+            var publicId = image.ImagePublicId;
+            var deletedOrder = image.DisplayOrder;
 
-            product.Images.Remove(image);
+            await _productRepository.DeleteImageAsync(image);
+
+            foreach (var item in product.Images.Where(x => x.Id != imageId && x.DisplayOrder > deletedOrder))
+            {
+                item.DisplayOrder--;
+                item.UpdatedAt = DateTime.UtcNow;
+            }
 
             await _productRepository.SaveChangesAsync();
+
+            await _storageService.DeleteAsync(publicId);
         }
 
         private static ProductImage GetProductImage(Product product, long imageId)
@@ -440,6 +443,9 @@ namespace Elara.Application.Services
 
             if (images.Select(x => x.DisplayOrder).Distinct().Count() != images.Count)
                 throw new BadRequestException("Display orders must be unique.");
+
+            if (!images.Select(x => x.DisplayOrder).OrderBy(x => x).SequenceEqual(Enumerable.Range(1, images.Count)))
+                throw new BadRequestException("Display orders must be sequential starting from 1.");
 
             foreach (var item in images)
             {

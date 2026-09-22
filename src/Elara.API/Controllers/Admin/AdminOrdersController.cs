@@ -37,7 +37,7 @@ namespace Elara.API.Controllers.Admin
         public async Task<IActionResult> UpdateOrderStatus(long orderId, [FromBody]UpdateOrderStatusRequestDto requestDto)
         {
             await _orderService.UpdateOrderStatusAsync(orderId, requestDto);
-            return StatusCode(204, ApiResponse<string>.SuccessResponse("Order status updated successfully."));
+            return Ok(ApiResponse<string>.SuccessResponse("Order status updated successfully."));
         }
     }
 }

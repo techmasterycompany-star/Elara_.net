@@ -38,13 +38,13 @@ namespace Elara.API.Controllers.Admin
         public async Task<IActionResult> UpdateShippingMethod(long shippingMethodId, [FromBody] UpdateShippingMethodDto updateDto)
         {
             await _shippingMethodService.UpdateShippingMethodAsync(shippingMethodId, updateDto);
-            return StatusCode(204, ApiResponse<string>.SuccessResponse("Shipping method updated successfully."));
+            return Ok(ApiResponse<string>.SuccessResponse("Shipping method updated successfully."));
         }
         [HttpDelete("{shippingMethodId:long}")]
         public async Task<IActionResult> DeleteShippingMethod(long shippingMethodId)
         {
             await _shippingMethodService.DeleteShippingMethodAsync(shippingMethodId);
-            return StatusCode(204, ApiResponse<string>.SuccessResponse("Shipping method deleted successfully."));
+            return Ok(ApiResponse<string>.SuccessResponse("Shipping method deleted successfully."));
         }
     }
 }

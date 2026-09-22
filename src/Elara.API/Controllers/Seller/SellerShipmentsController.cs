@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Elara.API.Controllers.Seller
 {
     [ApiController]
-    [Route("api/v1/sellers")]
+    [Route("api/v1/sellers/me")]
     [Authorize(Roles = "Seller")]
     public class SellerShipmentsController : ControllerBase
     {
