@@ -184,5 +184,59 @@ namespace Elara.Infrastructure.Repositories
             _context.Orders.Update(order);
             await _context.SaveChangesAsync();
         }
+
+        public async Task<PaginationQueryResult<Order>> GetCustomerOrdersAsync(long userId, PaginationRequest request)
+        {
+            var query = _context.Orders
+               .AsNoTracking()
+               .Where(o => o.UserId == userId)
+               .Include(o => o.Items)
+               .AsQueryable();
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .OrderByDescending(o => o.OrderDate)
+                .Skip((request.PageNumber - 1) * request.Limit)
+                .Take(request.Limit)
+                .ToListAsync();
+
+            return new PaginationQueryResult<Order>
+            {
+                Items = items,
+                TotalCount = totalCount
+            };
+        }
+
+        public async Task<Order?> GetCustomerOrderDetailsAsync(long orderId, long userId)
+        {
+            return await _context.Orders
+                .AsNoTracking()
+                .Include(o => o.Items)
+                    .ThenInclude(i => i.Product)
+                .Include(o => o.Shipments)
+                    .ThenInclude(s => s.Items)
+                .Include(o => o.StatusHistory)
+                .Include(o => o.Payment)
+                .Include(o => o.ShippingMethod)
+                .FirstOrDefaultAsync(o =>
+                    o.Id == orderId &&
+                    o.UserId == userId);
+        }
+
+        public async Task<List<OrderStatusHistory>> GetOrderStatusHistoryAsync(long orderId, long userId)
+        {
+            var orderExists = await _context.Orders
+                .AnyAsync(o => o.Id == orderId && o.UserId == userId);
+
+            if (!orderExists)
+                return null!;
+
+            return await _context.OrderStatusHistories
+                .AsNoTracking()
+                .Where(h => h.OrderId == orderId)
+                .OrderBy(h => h.CreatedAt)
+                .ToListAsync();
+        }
     }
 }

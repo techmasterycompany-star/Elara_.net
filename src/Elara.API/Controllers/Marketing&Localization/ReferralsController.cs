@@ -6,7 +6,7 @@ using System.Security.Claims;
 namespace Elara.API.Controllers
 {
     [ApiController]
-    [Route("api/referrals")]
+    [Route("api/v1/referrals")]
     //[Authorize]
     public class ReferralsController : ControllerBase
     {

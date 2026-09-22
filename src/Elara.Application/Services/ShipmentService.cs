@@ -123,13 +123,20 @@ namespace Elara.Application.Services
             if (shipments.Count == 0)
                 return;
 
-            if (shipments.All(s => s.Status == ShipmentStatus.Delivered))
+            var newStatus = shipments.All(s => s.Status == ShipmentStatus.Delivered) ? OrderStatus.Delivered 
+                : shipments.All(s => s.Status != ShipmentStatus.Pending) ? OrderStatus.Shipped : order.Status;
+
+            if (newStatus != order.Status)
             {
-                order.Status = OrderStatus.Delivered;
-            }
-            else if (shipments.All(s => s.Status != ShipmentStatus.Pending))
-            {
-                order.Status = OrderStatus.Shipped;
+                order.Status = newStatus;
+
+                order.StatusHistory.Add(new OrderStatusHistory
+                {
+                    OrderId = orderId,
+                    Status = newStatus.ToString(),
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
             }
 
             await _orderRepository.UpdateOrderAsync(order);
@@ -272,6 +279,27 @@ namespace Elara.Application.Services
             await _shipmentRepository.UpdateShipmentAsync(shipment);
         }
 
+        public async Task<IEnumerable<CustomerShipmentListDto>> GetCustomerShipmentsByOrderIdAsync(long orderId, long userId)
+        {
+            var order = await _orderRepository.GetCustomerOrderDetailsAsync(orderId, userId);
 
+            if (order == null)
+                throw new NotFoundException("Order not found.");
+
+            var shipments = await _shipmentRepository.GetCustomerShipmentsByOrderIdAsync(orderId, userId);
+
+            return _mapper.Map<IEnumerable<CustomerShipmentListDto>>(shipments);
+        }
+
+        public async Task<CustomerShipmentDetailsDto> GetCustomerShipmentByIdAsync(long orderId, long shipmentId, long userId)
+        {
+
+            var shipment = await _shipmentRepository.GetCustomerShipmentByIdAsync(orderId, shipmentId, userId);
+
+            if (shipment == null)
+                throw new NotFoundException("Shipment not found.");
+
+            return _mapper.Map<CustomerShipmentDetailsDto>(shipment);
+        }
     }
 }
