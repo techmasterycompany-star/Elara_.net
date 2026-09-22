@@ -97,6 +97,32 @@ jobs:
           name: deploy-package
           path: ./deploy-package
 
+      - name: Take site offline (unlock DLLs)
+        env:
+          FTP_HOST: ${{ secrets.MONSTERASP_FTP_HOST }}
+          FTP_USER: ${{ secrets.MONSTERASP_FTP_USERNAME }}
+          FTP_PASS: ${{ secrets.MONSTERASP_FTP_PASSWORD }}
+          FTP_DIR: ${{ secrets.MONSTERASP_FTP_DIR }}
+        run: |
+          python3 -c "
+          import os, ftplib
+          host = os.environ['FTP_HOST'].replace('ftp://','').replace('ftps://','').strip().rstrip('/')
+          if ':' in host: host = host.split(':')[0]
+          user = os.environ['FTP_USER']
+          pwd = os.environ['FTP_PASS']
+          remotedir = os.environ.get('FTP_DIR','/').strip() or '/'
+          print(f'Uploading app_offline.htm to {host}:{remotedir}')
+          with open('app_offline.htm','w') as f: f.write('Site is updating, please try again shortly.')
+          ftp = ftplib.FTP(host, timeout=30)
+          ftp.login(user, pwd)
+          try: ftp.cwd(remotedir)
+          except Exception as e: print(f'cwd warning: {e}')
+          with open('app_offline.htm','rb') as f: ftp.storbinary('STOR app_offline.htm', f)
+          ftp.quit()
+          print('Site taken offline.')
+          "
+          sleep 15
+
       - name: Deploy to MonsterASP via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -112,6 +138,32 @@ jobs:
             **/*.md
             **/Dockerfile
             **/docker-compose*.yml
+
+      - name: Bring site back online
+        if: always()
+        env:
+          FTP_HOST: ${{ secrets.MONSTERASP_FTP_HOST }}
+          FTP_USER: ${{ secrets.MONSTERASP_FTP_USERNAME }}
+          FTP_PASS: ${{ secrets.MONSTERASP_FTP_PASSWORD }}
+          FTP_DIR: ${{ secrets.MONSTERASP_FTP_DIR }}
+        run: |
+          python3 -c "
+          import os, ftplib
+          host = os.environ['FTP_HOST'].replace('ftp://','').replace('ftps://','').strip().rstrip('/')
+          if ':' in host: host = host.split(':')[0]
+          user = os.environ['FTP_USER']
+          pwd = os.environ['FTP_PASS']
+          remotedir = os.environ.get('FTP_DIR','/').strip() or '/'
+          ftp = ftplib.FTP(host, timeout=30)
+          ftp.login(user, pwd)
+          try: ftp.cwd(remotedir)
+          except Exception as e: print(f'cwd warning: {e}')
+          try:
+              ftp.delete('app_offline.htm')
+              print('app_offline.htm removed, site online.')
+          except Exception as e: print(f'delete warning (maybe already gone): {e}')
+          ftp.quit()
+          "
 
       - name: Deployment Summary
         run: |
