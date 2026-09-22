@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Email - Elara</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #C2185B 0%, #7B1FA2 100%);
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; padding: 20px;
+        }
+        .card {
+            background: #fff; border-radius: 16px; padding: 48px 40px;
+            max-width: 440px; width: 100%; text-align: center;
+            box-shadow: 0 12px 40px rgba(0,0,0,.25);
+        }
+        .logo { font-size: 28px; font-weight: 700; color: #C2185B; letter-spacing: 4px; margin-bottom: 24px; }
+        .icon {
+            width: 84px; height: 84px; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 40px; margin: 0 auto 20px;
+        }
+        .icon.loading { background: #FCE4EC; }
+        .icon.success { background: #E8F5E9; }
+        .icon.error { background: #FFEBEE; }
+        h1 { font-size: 22px; color: #333; margin-bottom: 12px; }
+        p { font-size: 14px; color: #777; line-height: 1.6; }
+        .spinner {
+            width: 40px; height: 40px; border: 4px solid #FCE4EC;
+            border-top: 4px solid #C2185B; border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .btn {
+            display: inline-block; margin-top: 24px; padding: 12px 32px;
+            background: #C2185B; color: #fff; text-decoration: none;
+            border-radius: 8px; font-size: 15px; font-weight: 600;
+        }
+        .btn:hover { background: #AD1457; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="logo">ELARA</div>
+
+        <div id="state-loading">
+            <div class="icon loading"><div class="spinner"></div></div>
+            <h1>Verifying your email...</h1>
+            <p>Please wait a moment.</p>
+        </div>
+
+        <div id="state-success" class="hidden">
+            <div class="icon success">✓</div>
+            <h1>Email Verified!</h1>
+            <p>Your email has been verified successfully.<br>You can now log in to your Elara account.</p>
+        </div>
+
+        <div id="state-error" class="hidden">
+            <div class="icon error">✕</div>
+            <h1>Verification Failed</h1>
+            <p id="error-msg">The verification link is invalid or has expired.</p>
+        </div>
+    </div>
+
+    <script>
+        function show(id) {
+            ['state-loading', 'state-success', 'state-error'].forEach(function (s) {
+                document.getElementById(s).classList.toggle('hidden', s !== id);
+            });
+        }
+        function errorText(d, status) {
+            if (d) {
+                if (d.errors && d.errors.length) return d.errors.map(function (e) { return e.message; }).join(' ');
+                if (d.error && d.error.title) return d.error.detail || d.error.title;
+            }
+            return 'Error ' + status + '. The link may be invalid or expired.';
+        }
+        (async function () {
+            var q = new URLSearchParams(window.location.search);
+            var email = q.get('email'), token = q.get('token');
+            if (!email || !token) {
+                document.getElementById('error-msg').textContent = 'Missing verification data. Please use the full link from your email.';
+                show('state-error');
+                return;
+            }
+            try {
+                var r = await fetch('/api/v1/Auth/verify-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email, token: token })
+                });
+                if (r.ok) { show('state-success'); }
+                else {
+                    var d = await r.json().catch(function () { return null; });
+                    document.getElementById('error-msg').textContent = errorText(d, r.status);
+                    show('state-error');
+                }
+            } catch (e) {
+                document.getElementById('error-msg').textContent = 'Could not reach the server. Check your connection and try again.';
+                show('state-error');
+            }
+        })();
+    </script>
+</body>
+</html>

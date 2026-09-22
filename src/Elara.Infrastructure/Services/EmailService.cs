@@ -22,7 +22,7 @@ namespace Elara.Infrastructure.Services
         public async Task SendEmailConfirmationAsync(string email, string token)
         {
             var clientUrl = emailOptions.ClientUrl ?? "https://localhost:7067";
-            var link = $"{clientUrl}/api/v1/Auth/verify-email?email={HttpUtility.UrlEncode(email)}&token={HttpUtility.UrlEncode(token)}";
+            var link = $"{clientUrl}/verify-email.html?email={HttpUtility.UrlEncode(email)}&token={HttpUtility.UrlEncode(token)}";
 
             var body = $@"
                 <div style='font-family:Arial;text-align:center;padding:30px;'>
@@ -40,7 +40,7 @@ namespace Elara.Infrastructure.Services
         public async Task SendPasswordResetAsync(string email, string token)
         {
             var clientUrl = emailOptions.ClientUrl ?? "https://localhost:7067";
-            var link = $"{clientUrl}/api/v1/Auth/reset-password?email={HttpUtility.UrlEncode(email)}&token={HttpUtility.UrlEncode(token)}";
+            var link = $"{clientUrl}/reset-password.html?email={HttpUtility.UrlEncode(email)}&token={HttpUtility.UrlEncode(token)}";
 
             var body = $@"
                 <div style='font-family:Arial;text-align:center;padding:30px;'>
