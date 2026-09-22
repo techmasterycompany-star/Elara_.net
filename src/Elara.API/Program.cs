@@ -15,8 +15,15 @@ using System.Text.Json.Serialization;
 using Elara.API.Filters;
 using Elara.Infrastructure.Options;
 
-// .ENV
-Env.Load();
+// .ENV (optional - local development only)
+try
+{
+    Env.Load();
+}
+catch
+{
+    // .env file not present in production (config comes from appsettings.Production.json)
+}
 
 var builder = WebApplication.CreateBuilder(args);
 
