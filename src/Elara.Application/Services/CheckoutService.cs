@@ -156,9 +156,13 @@ namespace Elara.Application.Services
             Order? createdOrder = null;
             await _checkoutRepository.CreateTransactionAsync(async () =>
             {
+                var existingOrder = await _checkoutRepository.GetOrderAsync(order);
+                if (existingOrder != null)
+                {
+                    throw new BadRequestException("An order is already in progress for this user.");
+                }
                 createdOrder = await _checkoutRepository.CreateOrderAsync(order);
                 await _checkoutRepository.UpdateStockAsync(checkoutItems);
-                await _checkoutRepository.ClearCartAsync(request.CartId!.Value);
             });
 
             var paymentResponse = await _paymentService.ProcessPaymentAsync(new PaymentRequestDto
@@ -172,11 +176,20 @@ namespace Elara.Application.Services
                 CardDetails = request.CardDetails
             });
 
+            var checkoutStatus = paymentResponse.Status == PaymentStatus.Completed
+                ? OrderStatus.Confirmed
+                : OrderStatus.Pending;
+
+            if (paymentResponse.Status == PaymentStatus.Completed && request.CartId.HasValue)
+            {
+                await _checkoutRepository.ClearCartAsync(request.CartId.Value);
+            }
+
             return new CheckoutResponse
             {
                 OrderId = createdOrder.Id,
                 OrderNumber = $"ORD-{createdOrder.Id:D8}",
-                Status = createdOrder.Status,
+                Status = checkoutStatus,
                 OrderDate = createdOrder.OrderDate,
                 TotalAmount = createdOrder.TotalAmount,
                 PaymentMethod = payment.Method,

@@ -15,7 +15,7 @@ namespace Elara.Infrastructure.Data.Configurations
                 .HasMaxLength(50);
 
             builder.Property(p => p.TransactionId)
-                .IsRequired()
+                .IsRequired(false)
                 .HasMaxLength(512);
 
             builder.Property(p => p.Amount)
