@@ -118,6 +118,7 @@ namespace Elara.Application.Services
         {
             var order = await _orderRepository.GetOrderByIdAsync(orderId);
 
+            // validate business rules
             if (order == null)
                 throw new NotFoundException("Order not found.");
 
@@ -134,13 +135,17 @@ namespace Elara.Application.Services
 
             var now = DateTime.UtcNow;
 
+            //Update status
+            order.Status = updateRequest.Status;
             order.StatusHistory.Add(new OrderStatusHistory
             {
                 OrderId = orderId,
                 Status = updateRequest.Status.ToString(),
-                Notes = string.IsNullOrWhiteSpace(updateRequest.Notes) ? "No notes provided." : updateRequest.Notes,
-                CreatedAt = now,
-                UpdatedAt = now
+                Notes = string.IsNullOrWhiteSpace(updateRequest.Notes)
+                    ? "Order status updated."
+                    : updateRequest.Notes,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             });
 
             await _orderRepository.UpdateOrderAsync(order);

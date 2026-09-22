@@ -75,6 +75,11 @@ namespace Elara.Application.Services
         {
             var shipment = await _shipmentRepository.GetShipmentByIdAsync(shipmentId);
 
+            // validate business rules
+            if (shipment.Status == updateRequest.Status)
+                throw new ConflictException($"Shipment is already {updateRequest.Status}.");
+            if (!IsValidTransition(shipment.Status, updateRequest.Status))
+                throw new ConflictException($"Cannot change shipment status from {shipment.Status} to {updateRequest.Status}.");
             if (shipment == null)
                 throw new NotFoundException("Shipment not found.");
 
@@ -132,23 +137,22 @@ namespace Elara.Application.Services
             if (shipments.Count == 0)
                 return;
 
-            var newStatus = GetOrderStatusFromShipments(order.Status, shipments);
+            var newStatus = shipments.All(s => s.Status == ShipmentStatus.Delivered) ? OrderStatus.Delivered
+                : shipments.All(s => s.Status != ShipmentStatus.Pending) ? OrderStatus.Shipped : order.Status;
 
-            if (newStatus == order.Status)
-                return;
-
-            order.Status = newStatus;
-
-            var now = DateTime.UtcNow;
-
-            order.StatusHistory.Add(new OrderStatusHistory
+            if (newStatus != order.Status)
             {
-                OrderId = orderId,
-                Status = newStatus.ToString(),
-                Notes = "Status updated automatically based on shipment statuses.",
-                CreatedAt = now,
-                UpdatedAt = now
-            });
+                order.Status = newStatus;
+
+                order.StatusHistory.Add(new OrderStatusHistory
+                {
+                    OrderId = orderId,
+                    Status = newStatus.ToString(),
+                    Notes = "Order status updated based on shipment statuses.",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
 
             await _orderRepository.UpdateOrderAsync(order);
         }
