@@ -137,22 +137,23 @@ namespace Elara.Application.Services
             if (shipments.Count == 0)
                 return;
 
-            var newStatus = shipments.All(s => s.Status == ShipmentStatus.Delivered) ? OrderStatus.Delivered
-                : shipments.All(s => s.Status != ShipmentStatus.Pending) ? OrderStatus.Shipped : order.Status;
+            var newStatus = GetOrderStatusFromShipments(order.Status, shipments);
 
-            if (newStatus != order.Status)
+            if (newStatus == order.Status)
+                return;
+            
+            order.Status = newStatus;
+            
+            var now = DateTime.UtcNow;
+            
+            order.StatusHistory.Add(new OrderStatusHistory
             {
-                order.Status = newStatus;
-
-                order.StatusHistory.Add(new OrderStatusHistory
-                {
-                    OrderId = orderId,
-                    Status = newStatus.ToString(),
-                    Notes = "Order status updated based on shipment statuses.",
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                });
-            }
+                OrderId = orderId,
+                Status = newStatus.ToString(),
+                Notes = "Status updated automatically based on shipment statuses.",
+                CreatedAt = now,
+                UpdatedAt = now
+            });
 
             await _orderRepository.UpdateOrderAsync(order);
         }
