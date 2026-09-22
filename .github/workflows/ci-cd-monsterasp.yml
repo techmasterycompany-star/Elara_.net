@@ -30,7 +30,6 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
-          cache: true
 
       - name: Restore dependencies
         run: dotnet restore ${{ env.SOLUTION_FILE }}
@@ -55,7 +54,6 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
-          cache: true
 
       - name: Publish API for deployment
         run: |
