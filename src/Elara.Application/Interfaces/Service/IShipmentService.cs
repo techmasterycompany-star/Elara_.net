@@ -7,6 +7,7 @@ namespace Elara.Application.Interfaces.Service
     {
         Task<PaginatedResponse<AdminShipmentListDto>> GetAllShipmentsAsync(AdminShipmentFilterDto shipmentRequest);
         Task<AdminShipmentDetailsDto> GetShipmentByIdAsync(long shipmentId);
+        Task CreateShipmentsForOrderAsync(long orderId);
         Task UpdateShipmentStatusAsync(long shipmentId, UpdateShipmentStatusRequestDto updateRequest);
         Task UpdateShipmentAsync(long shipmentId, AdminUpdateShipmentRequestDto request);
         Task<PaginatedResponse<SellerShipmentListDto>> GetSellerShipmentsAsync(long userId, SellerShipmentQuery query);

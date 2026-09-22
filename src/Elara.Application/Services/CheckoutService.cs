@@ -13,15 +13,18 @@ namespace Elara.Application.Services
     {
         private readonly ICheckoutRepository _checkoutRepository;
         private readonly IPaymentService _paymentService;
+        private readonly IShipmentService _shipmentService;
         private readonly IMapper _mapper;
 
         public CheckoutService(
             ICheckoutRepository checkoutRepository,
             IPaymentService paymentService,
+            IShipmentService shipmentService,
             IMapper mapper)
         {
             _checkoutRepository = checkoutRepository;
             _paymentService = paymentService;
+            _shipmentService = shipmentService;
             _mapper = mapper;
         }
 
@@ -165,9 +168,11 @@ namespace Elara.Application.Services
                 await _checkoutRepository.UpdateStockAsync(checkoutItems);
             });
 
+            await _shipmentService.CreateShipmentsForOrderAsync(createdOrder!.Id);
+
             var paymentResponse = await _paymentService.ProcessPaymentAsync(new PaymentRequestDto
             {
-                OrderId = createdOrder!.Id,
+                OrderId = createdOrder.Id,
                 PaymentMethod = request.PaymentMethod,
                 Amount = totalAmount,
                 ReturnUrl = request.ReturnUrl,
