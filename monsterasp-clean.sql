@@ -373,7 +373,7 @@ CREATE TABLE [Payments] (
     [OrderId] bigint NOT NULL,
     [Method] int NOT NULL,
     [Provider] nvarchar(50) NOT NULL,
-    [TransactionId] nvarchar(512) NOT NULL,
+    [TransactionId] nvarchar(512) NULL,
     [Currency] nvarchar(max) NOT NULL,
     [Amount] decimal(18,2) NOT NULL,
     [Status] int NOT NULL,

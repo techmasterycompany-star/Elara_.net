@@ -12,6 +12,8 @@ namespace Elara.Application.Interfaces.Repository
         Task<Product?> GetProductWithSellerAsync(long productId);
         Task<IEnumerable<Product>> GetProductsWithSellerAsync(IEnumerable<long> productIds);
         Task<Order> CreateOrderAsync(Order order);
+        Task<Order> GetOrderAsync(Order order);
+
         Task<bool> ClearCartAsync(long cartId);
         Task CreateTransactionAsync(Func<Task> action);
         Task UpdatePaymentTransactionIdAsync(long paymentId, string transactionId);

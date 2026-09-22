@@ -1,6 +1,7 @@
 using Elara.Application.DTOs.Checkout;
 using Elara.Application.Interfaces.Repository;
 using Elara.Domain.Entities;
+using Elara.Domain.Enums;
 using Elara.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -67,6 +68,17 @@ namespace Elara.Infrastructure.Repositories
             await _context.SaveChangesAsync();
             return order;
         }
+        public async Task<Order> GetOrderAsync(Order order)
+        {
+            if (order.UserId.HasValue)
+            {
+                return await _context.Orders.FirstOrDefaultAsync(o => o.UserId == order.UserId && o.Status == OrderStatus.Pending);
+            }
+            else
+            {
+                return await _context.Orders.FirstOrDefaultAsync(o => o.UserId == null && o.GuestPhoneNumber == order.GuestPhoneNumber && o.Status == OrderStatus.Pending);
+            }
+        }
 
         public async Task<bool> ClearCartAsync(long cartId)
         {
@@ -111,7 +123,7 @@ namespace Elara.Infrastructure.Repositories
 
             await _context.SaveChangesAsync();
         }
-        
+
         public async Task UpdateStockAsync(IEnumerable<CheckoutItemPreviewDto> checkoutItems)
         {
             foreach (var item in checkoutItems)

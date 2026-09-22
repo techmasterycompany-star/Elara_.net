@@ -69,7 +69,7 @@ namespace Elara.Application.Services
                 throw new ConflictException("Order is already paid");
 
             Payment payment;
-            
+
             if (order.Payment != null && order.Payment.Status == PaymentStatus.Pending)
             {
                 payment = order.Payment;
@@ -96,7 +96,7 @@ namespace Elara.Application.Services
             }
 
             PaymentResponseDto result;
-            
+
             switch (request.PaymentMethod)
             {
                 case PaymentMethodType.CreditCard:
@@ -198,8 +198,9 @@ namespace Elara.Application.Services
 
         private async Task<PaymentResponseDto> ProcessCodPaymentAsync(Payment payment, PaymentRequestDto request)
         {
-            payment.Status = PaymentStatus.Pending;
+            payment.Status = PaymentStatus.Completed;
             payment.Provider = "COD";
+            payment.PaidAt = DateTime.UtcNow;
             payment.UpdatedAt = DateTime.UtcNow;
 
             return new PaymentResponseDto
@@ -214,6 +215,7 @@ namespace Elara.Application.Services
                 TransactionId = payment.TransactionId,
                 Provider = payment.Provider,
                 CreatedAt = payment.CreatedAt,
+                PaidAt = payment.PaidAt,
                 Message = "Cash on Delivery - Payment will be collected upon delivery"
             };
         }
@@ -253,7 +255,7 @@ namespace Elara.Application.Services
         {
             order.Status = OrderStatus.Confirmed;
             order.UpdatedAt = DateTime.UtcNow;
-            
+
             order.StatusHistory.Add(new OrderStatusHistory
             {
                 OrderId = order.Id,
@@ -351,8 +353,8 @@ namespace Elara.Application.Services
 
             if (refunded)
             {
-                payment.Status = amount.HasValue && amount < payment.Amount 
-                    ? PaymentStatus.PartiallyRefunded 
+                payment.Status = amount.HasValue && amount < payment.Amount
+                    ? PaymentStatus.PartiallyRefunded
                     : PaymentStatus.Refunded;
                 payment.UpdatedAt = DateTime.UtcNow;
                 await _paymentRepository.UpdateAsync(payment);
