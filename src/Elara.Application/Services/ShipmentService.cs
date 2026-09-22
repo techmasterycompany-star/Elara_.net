@@ -50,6 +50,52 @@ namespace Elara.Application.Services
             return _mapper.Map<AdminShipmentDetailsDto>(shipment);
         }
 
+        public async Task CreateShipmentsForOrderAsync(long orderId)
+        {
+            var order = await _orderRepository.GetOrderByIdAsync(orderId);
+
+            if (order == null)
+                throw new NotFoundException("Order not found.");
+
+            if (order.Status == OrderStatus.Cancelled)
+                throw new ConflictException("Cannot create shipments for a cancelled order.");
+
+            var itemsBySeller = order.Items
+                .Where(item => item.Product != null)
+                .GroupBy(item => item.Product.SellerProfileId);
+
+            foreach (var sellerItems in itemsBySeller)
+            {
+                if (order.Shipments.Any(shipment =>
+                    !shipment.IsDeleted && shipment.SellerProfileId == sellerItems.Key))
+                {
+                    continue;
+                }
+
+                var shipment = new Shipment
+                {
+                    OrderId = order.Id,
+                    SellerProfileId = sellerItems.Key,
+                    Carrier = "Pending assignment",
+                    TrackingNumber = "Pending assignment",
+                    Status = ShipmentStatus.Pending,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    Items = sellerItems.Select(item => new ShipmentItem
+                    {
+                        OrderItemId = item.Id,
+                        Quantity = item.Quantity,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    }).ToList()
+                };
+
+                await _shipmentRepository.AddAsync(shipment);
+            }
+
+            await _shipmentRepository.SaveChangesAsync();
+        }
+
         public async Task UpdateShipmentAsync(long shipmentId, AdminUpdateShipmentRequestDto request)
         {
             var shipment = await _shipmentRepository.GetShipmentByIdAsync(shipmentId);
@@ -75,14 +121,14 @@ namespace Elara.Application.Services
         {
             var shipment = await _shipmentRepository.GetShipmentByIdAsync(shipmentId);
 
+            if (shipment == null)
+                throw new NotFoundException("Shipment not found.");
+
             // validate business rules
             if (shipment.Status == updateRequest.Status)
                 throw new ConflictException($"Shipment is already {updateRequest.Status}.");
             if (!IsValidTransition(shipment.Status, updateRequest.Status))
                 throw new ConflictException($"Cannot change shipment status from {shipment.Status} to {updateRequest.Status}.");
-            if (shipment == null)
-                throw new NotFoundException("Shipment not found.");
-
             await ChangeShipmentStatusAsync(shipment, updateRequest.Status);
             await _shipmentRepository.UpdateShipmentAsync(shipment);
             await UpdateOrderStatusBasedOnShipmentsAsync(shipment.OrderId);
@@ -114,7 +160,7 @@ namespace Elara.Application.Services
             return currentStatus switch
             {
                 ShipmentStatus.Pending => newStatus == ShipmentStatus.Shipped,
-                ShipmentStatus.Shipped => newStatus == ShipmentStatus.InTransit,
+                ShipmentStatus.Shipped => newStatus is ShipmentStatus.InTransit or ShipmentStatus.Delivered,
                 ShipmentStatus.InTransit => newStatus is ShipmentStatus.Delivered or ShipmentStatus.Returned,
                 ShipmentStatus.Delivered => false,
                 ShipmentStatus.Returned => false,
@@ -137,7 +183,10 @@ namespace Elara.Application.Services
             if (shipments.Count == 0)
                 return;
 
-            var newStatus = GetOrderStatusFromShipments(order.Status, shipments);
+            var newStatus = shipments.All(s => s.Status == ShipmentStatus.Delivered) ? OrderStatus.Delivered
+                : shipments.All(s => s.Status is ShipmentStatus.Shipped or ShipmentStatus.InTransit or ShipmentStatus.Delivered)
+                    ? OrderStatus.Shipped
+                    : order.Status;
 
             if (newStatus == order.Status)
                 return;

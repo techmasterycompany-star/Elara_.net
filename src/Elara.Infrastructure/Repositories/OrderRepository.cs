@@ -145,6 +145,7 @@ namespace Elara.Infrastructure.Repositories
         {
             return await _context.Orders
                 .Include(o => o.Items)
+                    .ThenInclude(i => i.Product)
                 .Include(o => o.Payment)
                 .Include(o => o.Shipments)
                 .Include(o => o.StatusHistory)
