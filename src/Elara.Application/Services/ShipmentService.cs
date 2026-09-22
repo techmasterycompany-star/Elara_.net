@@ -43,7 +43,9 @@ namespace Elara.Application.Services
         public async Task<AdminShipmentDetailsDto> GetShipmentByIdAsync(long shipmentId)
         {
             var shipment = await _shipmentRepository.GetShipmentByIdAsync(shipmentId);
-            if (shipment == null) throw new NotFoundException("Shipment Not Found");
+
+            if (shipment == null)
+                throw new NotFoundException("Shipment not found.");
 
             return _mapper.Map<AdminShipmentDetailsDto>(shipment);
         }
@@ -51,8 +53,10 @@ namespace Elara.Application.Services
         public async Task UpdateShipmentAsync(long shipmentId, AdminUpdateShipmentRequestDto request)
         {
             var shipment = await _shipmentRepository.GetShipmentByIdAsync(shipmentId);
-            if (shipment == null) throw new NotFoundException("Shipment Not Found");
-            // Update the shipment details
+
+            if (shipment == null)
+                throw new NotFoundException("Shipment not found.");
+
             if (request.Carrier != null)
                 shipment.Carrier = request.Carrier;
 
@@ -62,32 +66,47 @@ namespace Elara.Application.Services
             if (request.EstimatedDeliveryDate.HasValue)
                 shipment.EstimatedDeliveryDate = request.EstimatedDeliveryDate;
 
+            shipment.UpdatedAt = DateTime.UtcNow;
+
             await _shipmentRepository.UpdateShipmentAsync(shipment);
         }
 
         public async Task UpdateShipmentStatusAsync(long shipmentId, UpdateShipmentStatusRequestDto updateRequest)
         {
             var shipment = await _shipmentRepository.GetShipmentByIdAsync(shipmentId);
-            if (shipment == null) throw new NotFoundException("Shipment Not Found");
 
             // validate business rules
             if (shipment.Status == updateRequest.Status)
                 throw new ConflictException($"Shipment is already {updateRequest.Status}.");
             if (!IsValidTransition(shipment.Status, updateRequest.Status))
                 throw new ConflictException($"Cannot change shipment status from {shipment.Status} to {updateRequest.Status}.");
+            if (shipment == null)
+                throw new NotFoundException("Shipment not found.");
 
-            shipment.Status = updateRequest.Status;
-
-            // Update dates based on status
-            var now = DateTime.UtcNow;
-
-            if (updateRequest.Status == ShipmentStatus.Delivered)
-                shipment.DeliveredDate ??= now;
-            else if (updateRequest.Status == ShipmentStatus.Shipped)
-                shipment.ShippedDate ??= now;
-
+            await ChangeShipmentStatusAsync(shipment, updateRequest.Status);
             await _shipmentRepository.UpdateShipmentAsync(shipment);
             await UpdateOrderStatusBasedOnShipmentsAsync(shipment.OrderId);
+        }
+
+        private async Task ChangeShipmentStatusAsync(Shipment shipment, ShipmentStatus newStatus)
+        {
+            if (shipment.Status == newStatus)
+                throw new ConflictException($"Shipment is already {newStatus}.");
+
+            if (!IsValidTransition(shipment.Status, newStatus))
+                throw new ConflictException($"Cannot change shipment status from {shipment.Status} to {newStatus}.");
+
+            var now = DateTime.UtcNow;
+
+            shipment.Status = newStatus;
+
+            if (newStatus == ShipmentStatus.Shipped)
+                shipment.ShippedDate ??= now;
+
+            if (newStatus == ShipmentStatus.Delivered)
+                shipment.DeliveredDate ??= now;
+
+            shipment.UpdatedAt = now;
         }
 
         private static bool IsValidTransition(ShipmentStatus currentStatus, ShipmentStatus newStatus)
@@ -95,15 +114,10 @@ namespace Elara.Application.Services
             return currentStatus switch
             {
                 ShipmentStatus.Pending => newStatus == ShipmentStatus.Shipped,
-
                 ShipmentStatus.Shipped => newStatus == ShipmentStatus.InTransit,
-
                 ShipmentStatus.InTransit => newStatus is ShipmentStatus.Delivered or ShipmentStatus.Returned,
-
                 ShipmentStatus.Delivered => false,
-
                 ShipmentStatus.Returned => false,
-
                 _ => false
             };
         }
@@ -141,6 +155,22 @@ namespace Elara.Application.Services
             }
 
             await _orderRepository.UpdateOrderAsync(order);
+        }
+
+        private static OrderStatus GetOrderStatusFromShipments(OrderStatus currentStatus, List<Shipment> shipments)
+        {
+            var activeShipments = shipments.Where(s => s.Status != ShipmentStatus.Returned).ToList();
+
+            if (activeShipments.Count == 0)
+                return currentStatus;
+
+            if (activeShipments.All(s => s.Status == ShipmentStatus.Delivered))
+                return OrderStatus.Delivered;
+
+            if (currentStatus == OrderStatus.Confirmed && activeShipments.All(s => s.Status is ShipmentStatus.Shipped or ShipmentStatus.InTransit or ShipmentStatus.Delivered))
+                return OrderStatus.Shipped;
+
+            return currentStatus;
         }
 
         public async Task<PaginatedResponse<SellerShipmentListDto>> GetSellerShipmentsAsync(long userId, SellerShipmentQuery query)
@@ -188,13 +218,24 @@ namespace Elara.Application.Services
             if (dto.Items == null || dto.Items.Count == 0)
                 throw new ValidationException("Shipment must contain at least one item.");
 
+            if (dto.Items.GroupBy(i => i.OrderItemId).Any(g => g.Count() > 1))
+                throw new ValidationException("An order item cannot appear more than once in a shipment.");
+
             var order = await _orderRepository.GetSellerOrderDetailsAsync(orderId, sellerProfile.Id);
 
             if (order == null)
                 throw new NotFoundException("Order not found.");
 
-            var orderItems = order.Items.ToDictionary(i => i.Id);
+            if (order.Status == OrderStatus.Cancelled)
+                throw new ConflictException("Cannot create a shipment for a cancelled order.");
 
+            if (order.Status == OrderStatus.Delivered)
+                throw new ConflictException("Cannot create a shipment for a delivered order.");
+
+            //if (order.Status != OrderStatus.Confirmed)
+            //    throw new ConflictException("Shipments can only be created for confirmed orders.");
+
+            var orderItems = order.Items.ToDictionary(i => i.Id);
             var shipmentItems = new List<ShipmentItem>();
 
             foreach (var requestItem in dto.Items)
@@ -205,8 +246,14 @@ namespace Elara.Application.Services
                 if (requestItem.Quantity <= 0)
                     throw new ValidationException("Shipment quantity must be greater than zero.");
 
-                var alreadyShipped = orderItem.ShipmentItems.Sum(i => i.Quantity);
+                var alreadyShipped = orderItem.ShipmentItems
+                    .Where(i => !i.Shipment.IsDeleted && i.Shipment.Status != ShipmentStatus.Returned)
+                    .Sum(i => i.Quantity);
+
                 var remainingQuantity = orderItem.Quantity - alreadyShipped;
+
+                if (remainingQuantity <= 0)
+                    throw new ConflictException($"Order item {requestItem.OrderItemId} has already been fully shipped.");
 
                 if (requestItem.Quantity > remainingQuantity)
                     throw new ConflictException($"Shipment quantity exceeds the remaining quantity for order item {requestItem.OrderItemId}.");
@@ -256,28 +303,17 @@ namespace Elara.Application.Services
             if (dto.EstimatedDeliveryDate.HasValue)
                 shipment.EstimatedDeliveryDate = dto.EstimatedDeliveryDate;
 
-            if (dto.DeliveredDate.HasValue)
-                shipment.DeliveredDate = dto.DeliveredDate;
+            var statusChanged = dto.Status.HasValue && dto.Status.Value != shipment.Status;
 
-            if (dto.Status.HasValue && dto.Status.Value != shipment.Status)
-            {
-                if (!IsValidTransition(shipment.Status, dto.Status.Value))
-                    throw new ConflictException($"Cannot change shipment status from {shipment.Status} to {dto.Status.Value}.");
-
-                shipment.Status = dto.Status.Value;
-
-                var now = DateTime.UtcNow;
-
-                if (dto.Status.Value == ShipmentStatus.Shipped)
-                    shipment.ShippedDate ??= now;
-
-                if (dto.Status.Value == ShipmentStatus.Delivered)
-                    shipment.DeliveredDate ??= now;
-            }
+            if (statusChanged)
+                await ChangeShipmentStatusAsync(shipment, dto.Status!.Value);
 
             shipment.UpdatedAt = DateTime.UtcNow;
 
             await _shipmentRepository.UpdateShipmentAsync(shipment);
+
+            if (statusChanged)
+                await UpdateOrderStatusBasedOnShipmentsAsync(shipment.OrderId);
         }
 
         public async Task<IEnumerable<CustomerShipmentListDto>> GetCustomerShipmentsByOrderIdAsync(long orderId, long userId)
@@ -294,7 +330,6 @@ namespace Elara.Application.Services
 
         public async Task<CustomerShipmentDetailsDto> GetCustomerShipmentByIdAsync(long orderId, long shipmentId, long userId)
         {
-
             var shipment = await _shipmentRepository.GetCustomerShipmentByIdAsync(orderId, shipmentId, userId);
 
             if (shipment == null)

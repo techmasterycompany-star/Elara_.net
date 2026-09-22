@@ -71,7 +71,7 @@ namespace Elara.API.Controllers.Admin
         {
             var result = await _homepageService.CreateSectionAsync(dto);
 
-            return Ok(ApiResponse<HomepageSectionDto>.SuccessResponse(result));
+            return StatusCode(201, ApiResponse<HomepageSectionDto>.SuccessResponse(result));
         }
 
         [HttpPut("homepage/sections/{sectionId:long}")]

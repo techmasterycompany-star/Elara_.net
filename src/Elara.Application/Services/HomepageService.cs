@@ -120,15 +120,16 @@ namespace Elara.Application.Services
             ValidateBannerDates(dto.StartDate, dto.EndDate);
 
 
+            string? oldPublicId = null;
+
             if (dto.Image != null)
             {
-                var oldPublicId = banner.ImagePublicId;
+                oldPublicId = banner.ImagePublicId;
+
                 var upload = await UploadBannerImageAsync(dto.Image);
 
                 banner.ImageUrl = upload.Url;
                 banner.ImagePublicId = upload.PublicId;
-
-                await _storageService.DeleteAsync(oldPublicId);
             }
 
             banner.Title = dto.Title;
@@ -142,6 +143,11 @@ namespace Elara.Application.Services
 
             await _bannerRepository.UpdateAsync(banner);
             await _bannerRepository.SaveChangesAsync();
+
+            if (!string.IsNullOrWhiteSpace(oldPublicId))
+            {
+                await _storageService.DeleteAsync(oldPublicId);
+            }
 
             return _mapper.Map<BannerDto>(banner);
         }
@@ -161,15 +167,19 @@ namespace Elara.Application.Services
         {
             var banner = await GetBannerAsync(bannerId);
 
-            await _storageService.DeleteAsync(banner.ImagePublicId);
+            var publicId = banner.ImagePublicId;
 
             await _bannerRepository.DeleteAsync(banner);
             await _bannerRepository.SaveChangesAsync();
+
+            if (!string.IsNullOrWhiteSpace(publicId))
+                await _storageService.DeleteAsync(publicId);
         }
 
         public async Task<HomepageSectionDto> CreateSectionAsync(CreateHomepageSectionDto dto)
         {
-            ValidateSection(dto.Type, dto.BannerId, dto.CategoryId, dto.MaxItems); ;
+            ValidateSection(dto.Type, dto.BannerId, dto.CategoryId, dto.MaxItems);
+            await ValidateSectionReferencesAsync(dto.Type, dto.BannerId, dto.CategoryId);
 
             var section = _mapper.Map<HomepageSection>(dto);
             section.CreatedAt = DateTime.UtcNow;
@@ -187,21 +197,7 @@ namespace Elara.Application.Services
 
             ValidateSection(dto.Type, dto.BannerId, dto.CategoryId, dto.MaxItems);
 
-            if (dto.CategoryId.HasValue && dto.Type == HomepageSectionType.CategoryProducts)
-            {
-                var category = await _categoryRepository.GetCategoryByIdAsync(dto.CategoryId.Value);
-
-                if (category == null || category.IsDeleted)
-                    throw new NotFoundException("Category not found.");
-            }
-
-            if (dto.BannerId.HasValue && dto.Type == HomepageSectionType.Banner)
-            {
-                var banner = await _bannerRepository.GetByIdAsync(dto.BannerId.Value);
-
-                if (banner == null)
-                    throw new NotFoundException("Banner not found.");
-            }
+            await ValidateSectionReferencesAsync(dto.Type, dto.BannerId, dto.CategoryId);
 
             _mapper.Map(dto, section);
             section.UpdatedAt = DateTime.UtcNow;
@@ -262,25 +258,65 @@ namespace Elara.Application.Services
         {
             if (startDate.HasValue && endDate.HasValue && endDate < startDate)
                 throw new BadRequestException("End date cannot be earlier than start date.");
+
         }
 
-        private static void ValidateSection(HomepageSectionType type, long? bannerId, long? categoryId, int maxItems)
+        private static void ValidateSection(HomepageSectionType type, long? bannerId, long? categoryId, int? maxItems)
         {
-            if (type == HomepageSectionType.Banner && !bannerId.HasValue)
-                throw new BadRequestException("BannerId is required for a Banner section.");
+            if (!Enum.IsDefined(typeof(HomepageSectionType), type))
+                throw new BadRequestException("Invalid homepage section type.");
 
-            if (type != HomepageSectionType.Banner && bannerId.HasValue)
+            if (type == HomepageSectionType.Banner)
+            {
+                if (!bannerId.HasValue)
+                    throw new BadRequestException("BannerId is required for a Banner section.");
+
+                if (categoryId.HasValue)
+                    throw new BadRequestException("CategoryId cannot be used for a Banner section.");
+
+                if (maxItems.HasValue)
+                    throw new BadRequestException("MaxItems cannot be used for a Banner section.");
+
+                return;
+            }
+
+            if (bannerId.HasValue)
                 throw new BadRequestException("BannerId can only be used for a Banner section.");
 
-            if (type == HomepageSectionType.CategoryProducts && !categoryId.HasValue)
-                throw new BadRequestException("CategoryId is required for a CategoryProducts section.");
+            if (!maxItems.HasValue || maxItems.Value < 1)
+                throw new BadRequestException("MaxItems must be greater than zero for this section type.");
 
-            if (type != HomepageSectionType.CategoryProducts && categoryId.HasValue)
+            if (type == HomepageSectionType.CategoryProducts)
+            {
+                if (!categoryId.HasValue)
+                    throw new BadRequestException("CategoryId is required for a CategoryProducts section.");
+
+                return;
+            }
+
+            if (categoryId.HasValue)
                 throw new BadRequestException("CategoryId can only be used for a CategoryProducts section.");
-
-            if (type != HomepageSectionType.Banner && maxItems < 1)
-                throw new BadRequestException("MaxItems must be greater than zero.");
         }
 
+        private async Task ValidateSectionReferencesAsync(HomepageSectionType type, long? bannerId, long? categoryId)
+        {
+            if (type == HomepageSectionType.Banner)
+            {
+                var banner = await _bannerRepository.GetByIdAsync(bannerId!.Value);
+
+                if (banner == null)
+                    throw new NotFoundException("Banner not found.");
+
+                return;
+            }
+
+            if (type == HomepageSectionType.CategoryProducts)
+            {
+                var category = await _categoryRepository.GetCategoryByIdAsync(categoryId!.Value);
+
+                if (category == null || category.IsDeleted)
+                    throw new NotFoundException("Category not found.");
+            }
+        }
     }
 }

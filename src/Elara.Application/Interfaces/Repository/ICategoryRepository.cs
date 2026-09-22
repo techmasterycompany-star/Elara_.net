@@ -11,5 +11,8 @@ namespace Elara.Application.Interfaces.Repository
         Task<bool> CategoryNameExistsAsync(string name, long? excludeId = null);
         Task CreateCategoryAsync(Category category);
         Task UpdateCategoryAsync(Category category);
+        Task<bool> IsDescendantAsync(long categoryId, long potentialAncestorId);
+        Task<bool> HasActiveChildrenAsync(long categoryId);
+        Task<bool> HasActiveProductsAsync(long categoryId);
     }
 }

@@ -21,7 +21,7 @@ namespace Elara.API.Controllers.Customer
         }
 
         [HttpGet("users/me/orders")]
-        public async Task<IActionResult> GetMyOrders([FromQuery] PaginationRequest request)
+        public async Task<IActionResult> GetMyOrders([FromQuery] GetMyOrdersRequest request)
         {
             var userId = User.GetAuthenticatedUserId();
 
@@ -40,7 +40,7 @@ namespace Elara.API.Controllers.Customer
             return Ok(ApiResponse<CustomerOrderDetailsDto>.SuccessResponse(result));
         }
 
-        [HttpPost("orders/{orderId:long}/cancel")]
+        [HttpDelete("orders/{orderId:long}/cancel")]
         public async Task<IActionResult> CancelOrder(long orderId)
         {
             var userId = User.GetAuthenticatedUserId();

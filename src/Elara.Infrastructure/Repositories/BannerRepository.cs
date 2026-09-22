@@ -18,10 +18,18 @@ namespace Elara.Infrastructure.Repositories
 
         public async Task<PaginationQueryResult<Banner>> GetAdminBannersAsync(AdminBannerQuery query)
         {
-            var banners = _context.Banners.AsNoTracking().AsQueryable();
+            var banners = _context.Banners
+                .AsNoTracking()
+                .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(query.Search))
-                banners = banners.Where(b => b.Title.Contains(query.Search) || b.Subtitle.Contains(query.Search));
+            {
+                var search = query.Search.Trim();
+
+                banners = banners.Where(b =>
+                    b.Title.Contains(search) ||
+                    (b.Subtitle != null && b.Subtitle.Contains(search)));
+            }
 
             if (query.Position.HasValue)
                 banners = banners.Where(b => b.Position == query.Position.Value);
@@ -31,14 +39,31 @@ namespace Elara.Infrastructure.Repositories
 
             var desc = query.SortOrder == SortOrderEnum.Desc;
 
-            banners = query.SortBy?.ToLower() switch
+            banners = query.SortBy switch
             {
-                "title" => desc ? banners.OrderByDescending(b => b.Title) : banners.OrderBy(b => b.Title),
-                "position" => desc ? banners.OrderByDescending(b => b.Position) : banners.OrderBy(b => b.Position),
-                "displayorder" => desc ? banners.OrderByDescending(b => b.DisplayOrder) : banners.OrderBy(b => b.DisplayOrder),
-                "startdate" => desc ? banners.OrderByDescending(b => b.StartDate) : banners.OrderBy(b => b.StartDate),
-                "enddate" => desc ? banners.OrderByDescending(b => b.EndDate) : banners.OrderBy(b => b.EndDate),
-                _ => desc ? banners.OrderByDescending(b => b.CreatedAt) : banners.OrderBy(b => b.CreatedAt)
+                AdminBannerOrderBy.Title => desc
+                    ? banners.OrderByDescending(b => b.Title).ThenByDescending(b => b.Id)
+                    : banners.OrderBy(b => b.Title).ThenBy(b => b.Id),
+
+                AdminBannerOrderBy.Position => desc
+                    ? banners.OrderByDescending(b => b.Position).ThenByDescending(b => b.Id)
+                    : banners.OrderBy(b => b.Position).ThenBy(b => b.Id),
+
+                AdminBannerOrderBy.DisplayOrder => desc
+                    ? banners.OrderByDescending(b => b.DisplayOrder).ThenByDescending(b => b.Id)
+                    : banners.OrderBy(b => b.DisplayOrder).ThenBy(b => b.Id),
+
+                AdminBannerOrderBy.StartDate => desc
+                    ? banners.OrderByDescending(b => b.StartDate).ThenByDescending(b => b.Id)
+                    : banners.OrderBy(b => b.StartDate).ThenBy(b => b.Id),
+
+                AdminBannerOrderBy.EndDate => desc
+                    ? banners.OrderByDescending(b => b.EndDate).ThenByDescending(b => b.Id)
+                    : banners.OrderBy(b => b.EndDate).ThenBy(b => b.Id),
+
+                _ => desc
+                    ? banners.OrderByDescending(b => b.CreatedAt).ThenByDescending(b => b.Id)
+                    : banners.OrderBy(b => b.CreatedAt).ThenBy(b => b.Id)
             };
 
             var totalCount = await banners.CountAsync();
@@ -66,12 +91,13 @@ namespace Elara.Infrastructure.Repositories
                     (!b.EndDate.HasValue || b.EndDate >= now))
                 .OrderBy(b => b.Position)
                 .ThenBy(b => b.DisplayOrder)
+                .ThenBy(b => b.Id)
                 .ToListAsync();
         }
 
         public Task<Banner?> GetByIdAsync(long bannerId)
         {
-            return _context.Banners.FirstOrDefaultAsync(x => x.Id == bannerId);
+            return _context.Banners.FirstOrDefaultAsync(b => b.Id == bannerId);
         }
 
         public async Task<Banner> AddAsync(Banner banner)

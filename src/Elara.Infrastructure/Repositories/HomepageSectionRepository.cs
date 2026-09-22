@@ -2,6 +2,7 @@
 using Elara.Application.DTOs.HomePageContent;
 using Elara.Application.Interfaces.Repository;
 using Elara.Domain.Entities;
+using Elara.Domain.Enums;
 using Elara.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,19 +16,34 @@ namespace Elara.Infrastructure.Repositories
         {
             _context = context;
         }
+
         public async Task<IEnumerable<HomepageSection>> GetActiveAsync()
         {
+            var now = DateTime.UtcNow;
+
             return await _context.HomepageSections
                 .AsNoTracking()
-                .Where(s => s.IsActive)
                 .Include(s => s.Banner)
+                .Where(s =>
+                    s.IsActive &&
+                    (
+                        s.Type != HomepageSectionType.Banner ||
+                        (
+                            s.Banner != null &&
+                            s.Banner.IsActive &&
+                            (!s.Banner.StartDate.HasValue || s.Banner.StartDate <= now) &&
+                            (!s.Banner.EndDate.HasValue || s.Banner.EndDate >= now)
+                        )
+                    ))
                 .OrderBy(s => s.DisplayOrder)
+                .ThenBy(s => s.Id)
                 .ToListAsync();
         }
 
         public Task<HomepageSection?> GetByIdAsync(long sectionId)
         {
-            return _context.HomepageSections.FirstOrDefaultAsync(x => x.Id == sectionId);
+            return _context.HomepageSections
+                .FirstOrDefaultAsync(s => s.Id == sectionId);
         }
 
         public async Task<PaginationQueryResult<HomepageSection>> GetSectionsAsync(HomepageSectionQuery query)
@@ -39,9 +55,11 @@ namespace Elara.Infrastructure.Repositories
 
             if (!string.IsNullOrWhiteSpace(query.Search))
             {
+                var search = query.Search.Trim();
+
                 sections = sections.Where(s =>
-                    s.Title.Contains(query.Search) ||
-                    (s.SubTitle != null && s.SubTitle.Contains(query.Search)));
+                    s.Title.Contains(search) ||
+                    (s.SubTitle != null && s.SubTitle.Contains(search)));
             }
 
             if (query.Type.HasValue)
@@ -54,12 +72,29 @@ namespace Elara.Infrastructure.Repositories
 
             sections = query.SortBy switch
             {
-                HomepageSectionSortBy.Title => desc ? sections.OrderByDescending(s => s.Title) : sections.OrderBy(s => s.Title),
-                HomepageSectionSortBy.Type => desc ? sections.OrderByDescending(s => s.Type) : sections.OrderBy(s => s.Type),
-                HomepageSectionSortBy.DisplayOrder => desc ? sections.OrderByDescending(s => s.DisplayOrder) : sections.OrderBy(s => s.DisplayOrder),
-                HomepageSectionSortBy.MaxItems => desc ? sections.OrderByDescending(s => s.MaxItems) : sections.OrderBy(s => s.MaxItems),
-                HomepageSectionSortBy.UpdatedAt => desc ? sections.OrderByDescending(s => s.UpdatedAt) : sections.OrderBy(s => s.UpdatedAt),
-                _ => desc ? sections.OrderByDescending(s => s.CreatedAt) : sections.OrderBy(s => s.CreatedAt)
+                HomepageSectionSortBy.Title => desc
+                    ? sections.OrderByDescending(s => s.Title).ThenByDescending(s => s.Id)
+                    : sections.OrderBy(s => s.Title).ThenBy(s => s.Id),
+
+                HomepageSectionSortBy.Type => desc
+                    ? sections.OrderByDescending(s => s.Type).ThenByDescending(s => s.Id)
+                    : sections.OrderBy(s => s.Type).ThenBy(s => s.Id),
+
+                HomepageSectionSortBy.DisplayOrder => desc
+                    ? sections.OrderByDescending(s => s.DisplayOrder).ThenByDescending(s => s.Id)
+                    : sections.OrderBy(s => s.DisplayOrder).ThenBy(s => s.Id),
+
+                HomepageSectionSortBy.MaxItems => desc
+                    ? sections.OrderByDescending(s => s.MaxItems).ThenByDescending(s => s.Id)
+                    : sections.OrderBy(s => s.MaxItems).ThenBy(s => s.Id),
+
+                HomepageSectionSortBy.UpdatedAt => desc
+                    ? sections.OrderByDescending(s => s.UpdatedAt).ThenByDescending(s => s.Id)
+                    : sections.OrderBy(s => s.UpdatedAt).ThenBy(s => s.Id),
+
+                _ => desc
+                    ? sections.OrderByDescending(s => s.CreatedAt).ThenByDescending(s => s.Id)
+                    : sections.OrderBy(s => s.CreatedAt).ThenBy(s => s.Id)
             };
 
             var totalCount = await sections.CountAsync();

@@ -71,6 +71,7 @@ namespace Elara.Application.Services
             if (user == null) throw new NotFoundException("User not found");
 
             user.IsActive = isActive;
+            user.UpdatedAt = DateTime.UtcNow;
             await _userRepository.UpdateUserAsync(user);
             return true;
         }
@@ -102,6 +103,7 @@ namespace Elara.Application.Services
                     RoleId = roleId
                 });
             }
+            user.UpdatedAt = DateTime.UtcNow;
 
             await _userRepository.UpdateUserAsync(user);
 
