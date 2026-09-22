@@ -34,6 +34,10 @@ namespace Elara.Application.Mapping
             CreateMap<ShipmentItem, SellerShipmentItemDto>()
                 .ForMember(d => d.ProductId, o => o.MapFrom(s => s.OrderItem.ProductId))
                 .ForMember(d => d.ProductName, o => o.MapFrom(s => s.OrderItem.Product.Name));
+
+            CreateMap<Shipment, CustomerShipmentListDto>();
+            CreateMap<ShipmentItem, CustomerShipmentItemDto>();
+            CreateMap<Shipment, CustomerShipmentDetailsDto>();
         }
     }
 }

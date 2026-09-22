@@ -173,5 +173,30 @@ namespace Elara.Infrastructure.Repositories
             await _context.SaveChangesAsync();
         }
 
+        public async Task<List<Shipment>> GetCustomerShipmentsByOrderIdAsync(long orderId, long userId)
+        {
+            return await _context.Shipments
+                .AsNoTracking()
+                .Include(s => s.Items)
+                    .ThenInclude(i => i.OrderItem)
+                .Where(s =>
+                    s.OrderId == orderId &&
+                    s.Order.UserId == userId)
+                .OrderBy(s => s.Id)
+                .ToListAsync();
+        }
+
+        public async Task<Shipment?> GetCustomerShipmentByIdAsync(long orderId, long shipmentId, long userId)
+        {
+            return await _context.Shipments
+                .AsNoTracking()
+                .Include(s => s.Items)
+                    .ThenInclude(i => i.OrderItem)
+                        .ThenInclude(oi => oi.Product)
+                .FirstOrDefaultAsync(s =>
+                    s.Id == shipmentId &&
+                    s.OrderId == orderId &&
+                    s.Order.UserId == userId);
+        }
     }
 }

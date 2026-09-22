@@ -154,5 +154,69 @@ namespace Elara.Application.Services
                 _ => false
             };
         }
+
+        public async Task<PaginatedResponse<CustomerOrderListDto>> GetCustomerOrdersAsync(long userId, PaginationRequest request)
+        {
+            var orders = await _orderRepository.GetCustomerOrdersAsync(userId, request);
+
+            var orderDtos = _mapper.Map<IEnumerable<CustomerOrderListDto>>(orders.Items).ToList();
+
+            return new PaginatedResponse<CustomerOrderListDto>
+            {
+                Data = orderDtos,
+                PageNumber = request.PageNumber,
+                Limit = request.Limit,
+                TotalCount = orders.TotalCount,
+                TotalPages = (int)Math.Ceiling((double)orders.TotalCount / request.Limit)
+            };
+        }
+
+        public async Task<CustomerOrderDetailsDto> GetCustomerOrderByIdAsync(long orderId, long userId)
+        {
+            var order = await _orderRepository.GetCustomerOrderDetailsAsync(orderId, userId);
+
+            if (order == null)
+                throw new NotFoundException("Order not found.");
+
+            return _mapper.Map<CustomerOrderDetailsDto>(order);
+        }
+
+        public async Task CancelCustomerOrderAsync(long orderId, long userId)
+        {
+            var order = await _orderRepository.GetCustomerOrderDetailsAsync(orderId, userId);
+
+            if (order == null)
+                throw new NotFoundException("Order not found.");
+
+            if (order.Status == OrderStatus.Cancelled)
+                throw new ConflictException("Order is already cancelled.");
+
+            if (order.Status != OrderStatus.Pending && order.Status != OrderStatus.Confirmed)
+                throw new ConflictException($"Order cannot be cancelled when its status is {order.Status}.");
+
+            order.Status = OrderStatus.Cancelled;
+
+            order.StatusHistory.Add(new OrderStatusHistory
+            {
+                OrderId = order.Id,
+                Status = OrderStatus.Cancelled.ToString(),
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+
+            await _orderRepository.UpdateOrderAsync(order);
+        }
+
+        public async Task<IEnumerable<CustomerOrderStatusHistoryDto>> GetOrderStatusHistoryAsync(long orderId, long userId)
+        {
+            var order = await _orderRepository.GetCustomerOrderDetailsAsync(orderId, userId);
+
+            if (order == null)
+                throw new NotFoundException("Order not found.");
+
+            var history = await _orderRepository.GetOrderStatusHistoryAsync(orderId, userId);
+
+            return _mapper.Map<IEnumerable<CustomerOrderStatusHistoryDto>>(history);
+        }
     }
 }

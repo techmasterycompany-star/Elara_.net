@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Elara.Application.DTOs.Order;
 using Elara.Domain.Entities;
+using Elara.Domain.Enums;
 
 namespace Elara.Application.Mapping
 {
@@ -81,6 +82,29 @@ namespace Elara.Application.Mapping
                 .ForMember(d => d.ProductName, o => o.MapFrom(s => s.Product.Name))
                 .ForMember(d => d.QuantityShipped, o => o.Ignore())
                 .ForMember(d => d.QuantityRemaining, o => o.Ignore());
+
+            CreateMap<Order, CustomerOrderListDto>()
+                .ForMember(
+                    dest => dest.ItemCount,
+                    opt => opt.MapFrom(src => src.Items.Count));
+
+            CreateMap<Order, CustomerOrderDetailsDto>();
+
+            CreateMap<OrderItem, CustomerOrderItemDto>()
+                .ForMember(
+                    dest => dest.OrderItemId,
+                    opt => opt.MapFrom(src => src.Id))
+                .ForMember(
+                    dest => dest.ProductId,
+                    opt => opt.MapFrom(src => src.ProductId))
+                .ForMember(
+                    dest => dest.ProductName,
+                    opt => opt.MapFrom(src => src.Product.Name));
+
+            CreateMap<OrderStatusHistory, CustomerOrderStatusHistoryDto>()
+                .ForMember(
+                    dest => dest.Status,
+                    opt => opt.MapFrom(src => Enum.Parse<OrderStatus>(src.Status)));
         }
     }
     
