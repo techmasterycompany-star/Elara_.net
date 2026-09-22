@@ -183,10 +183,7 @@ namespace Elara.Application.Services
             if (shipments.Count == 0)
                 return;
 
-            var newStatus = shipments.All(s => s.Status == ShipmentStatus.Delivered) ? OrderStatus.Delivered
-                : shipments.All(s => s.Status is ShipmentStatus.Shipped or ShipmentStatus.InTransit or ShipmentStatus.Delivered)
-                    ? OrderStatus.Shipped
-                    : order.Status;
+            var newStatus = GetOrderStatusFromShipments(order.Status, shipments);
 
             if (newStatus == order.Status)
                 return;
