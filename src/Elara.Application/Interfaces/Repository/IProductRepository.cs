@@ -15,6 +15,8 @@ namespace Elara.Application.Interfaces.Repository
         Task<Product> AddAsync(Product product);
 
         Task UpdateAsync(Product product);
+        Task<ProductImage?> GetImageByIdAsync(long productId, long imageId);
+        Task DeleteImageAsync(ProductImage image);
 
         Task SaveChangesAsync();
     }

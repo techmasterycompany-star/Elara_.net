@@ -50,7 +50,7 @@ namespace Elara.Application.Services
                 if (parentCategory == null)
                     throw new NotFoundException("Parent category not found.");
             }
-
+            category.Name = category.Name.Trim();
             var nameExists = await _categoryRepository.CategoryNameExistsAsync(category.Name);
             if (nameExists)
                 throw new ConflictException($"Category with name '{category.Name}' already exists.");
@@ -66,13 +66,16 @@ namespace Elara.Application.Services
             if (category.ParentCategoryId.HasValue)
             {
                 if (category.ParentCategoryId.Value == categoryId)
-                    throw new ConflictException("Category cannot be its own parent category.");
+                    throw new BadRequestException("Category cannot be its own parent category.");
 
                 var parentCategory = await _categoryRepository.GetCategoryByIdAsync(category.ParentCategoryId.Value);
                 if (parentCategory == null)
                     throw new NotFoundException("Parent category not found.");
-            }
 
+                if (await _categoryRepository.IsDescendantAsync(categoryId, category.ParentCategoryId.Value))
+                    throw new ConflictException("Category cannot have one of its descendants as its parent.");
+            }
+            category.Name = category.Name.Trim();
             var nameExists = await _categoryRepository.CategoryNameExistsAsync(category.Name, categoryId);
             if (nameExists)
                 throw new ConflictException($"Category with name '{category.Name}' already exists.");
@@ -86,6 +89,12 @@ namespace Elara.Application.Services
             var category = await _categoryRepository.GetCategoryByIdAsync(id);  
             if(category == null)
                 throw new NotFoundException($"Category not found.");
+
+            if (await _categoryRepository.HasActiveChildrenAsync(id))
+                throw new ConflictException("Category cannot be deleted while it has active child categories.");
+
+            if (await _categoryRepository.HasActiveProductsAsync(id))
+                throw new ConflictException("Category cannot be deleted while it has active products.");
 
             category.IsDeleted = true;
             category.UpdatedAt = DateTime.UtcNow;

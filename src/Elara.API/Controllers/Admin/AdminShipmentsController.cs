@@ -35,14 +35,14 @@ namespace Elara.API.Controllers.Admin
         public async Task<IActionResult> UpdateShipment(long shipmentId, [FromBody] AdminUpdateShipmentRequestDto requestDto)
         {
             await _shipmentService.UpdateShipmentAsync(shipmentId, requestDto);
-            return StatusCode(204, ApiResponse<string>.SuccessResponse("Shipment updated successfully."));
+            return Ok(ApiResponse<string>.SuccessResponse("Shipment updated successfully."));
         }
 
         [HttpPatch("{shipmentId:long}/status")]
         public async Task<IActionResult> UpdateShipmentStatus(long shipmentId, [FromBody]UpdateShipmentStatusRequestDto requestDto)
         {
             await _shipmentService.UpdateShipmentStatusAsync(shipmentId, requestDto);
-            return StatusCode(204, ApiResponse<string>.SuccessResponse("Shipment status updated successfully."));
+            return Ok(ApiResponse<string>.SuccessResponse("Shipment status updated successfully."));
         }
     }
 }

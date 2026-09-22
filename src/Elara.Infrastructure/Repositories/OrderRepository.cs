@@ -20,7 +20,7 @@ namespace Elara.Infrastructure.Repositories
         {
             var orders = _context.Orders
                 .AsNoTracking()
-                .Where(o => o.Items.Any(i => i.Product.SellerProfileId == sellerProfileId))
+                .Where(o => !o.IsDeleted && o.Items.Any(i => i.Product.SellerProfileId == sellerProfileId))
                 .Include(o => o.Items.Where(i => i.Product.SellerProfileId == sellerProfileId))
                     .ThenInclude(i => i.Product)
                 .AsQueryable();
@@ -32,11 +32,14 @@ namespace Elara.Infrastructure.Repositories
                 orders = orders.Where(o => o.OrderDate >= query.DateFrom.Value);
 
             if (query.DateTo.HasValue)
-                orders = orders.Where(o => o.OrderDate <= query.DateTo.Value);
+            {
+                var toDate = query.DateTo.Value.Date.AddDays(1);
+                orders = orders.Where(o => o.OrderDate < toDate);
+            }
 
-            var desc = query.SortOrder == SortOrderEnum.Desc;
-
-            orders = desc ? orders.OrderByDescending(o => o.OrderDate) : orders.OrderBy(o => o.OrderDate);
+            orders = query.SortOrder == SortOrderEnum.Desc
+                ? orders.OrderByDescending(o => o.OrderDate)
+                : orders.OrderBy(o => o.OrderDate);
 
             var totalCount = await orders.CountAsync();
 
@@ -60,64 +63,56 @@ namespace Elara.Infrastructure.Repositories
                     .ThenInclude(i => i.Product)
                 .Include(o => o.Items.Where(i => i.Product.SellerProfileId == sellerProfileId))
                     .ThenInclude(i => i.ShipmentItems)
-                .FirstOrDefaultAsync(o => o.Id == orderId && o.Items.Any(i => i.Product.SellerProfileId == sellerProfileId));
+                        .ThenInclude(si => si.Shipment)
+                .FirstOrDefaultAsync(o =>
+                    !o.IsDeleted &&
+                    o.Id == orderId &&
+                    o.Items.Any(i => i.Product.SellerProfileId == sellerProfileId));
         }
 
         public async Task<PaginationQueryResult<Order>> GetAllOrdersAsync(AdminOrderFilterDto request)
         {
             var query = _context.Orders
-                   .AsNoTracking()
-                   .Include(o => o.User)
-                   .Include(o => o.Items).ThenInclude(i => i.Product)
-                   .AsQueryable();
+                .AsNoTracking()
+                .Where(o => !o.IsDeleted)
+                .Include(o => o.User)
+                .Include(o => o.Items)
+                    .ThenInclude(i => i.Product)
+                .AsQueryable();
 
-            // Search
             if (!string.IsNullOrWhiteSpace(request.Search))
             {
                 var search = request.Search.Trim();
 
                 query = query.Where(o =>
                     o.Id.ToString().Contains(search) ||
-                    (o.User != null && (o.User.FullName.Contains(search, StringComparison.OrdinalIgnoreCase) || o.User.Email.Contains(search, StringComparison.OrdinalIgnoreCase))) ||
-                    (!string.IsNullOrEmpty(o.GuestFullName) && o.GuestFullName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
-                    (!string.IsNullOrEmpty(o.GuestEmail) && o.GuestEmail.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
-                    (!string.IsNullOrEmpty(o.GuestPhoneNumber) && o.GuestPhoneNumber.Contains(search, StringComparison.OrdinalIgnoreCase)));
+                    (o.User != null && (o.User.FullName.Contains(search) || o.User.Email.Contains(search))) ||
+                    (!string.IsNullOrEmpty(o.GuestFullName) && o.GuestFullName.Contains(search)) ||
+                    (!string.IsNullOrEmpty(o.GuestEmail) && o.GuestEmail.Contains(search)) ||
+                    (!string.IsNullOrEmpty(o.GuestPhoneNumber) && o.GuestPhoneNumber.Contains(search)));
             }
 
-            // Status
             if (request.Status.HasValue)
-            {
                 query = query.Where(o => o.Status == request.Status.Value);
-            }
 
-            // Date range
             if (request.FromDate.HasValue)
-            {
                 query = query.Where(o => o.OrderDate >= request.FromDate.Value);
-            }
 
             if (request.ToDate.HasValue)
             {
-                query = query.Where(o => o.OrderDate <= request.ToDate.Value);
+                var toDate = request.ToDate.Value.Date.AddDays(1);
+                query = query.Where(o => o.OrderDate < toDate);
             }
 
-            // Customer
             if (request.CustomerId.HasValue)
-            {
                 query = query.Where(o => o.UserId == request.CustomerId.Value);
-            }
 
-            // Seller
             if (request.SellerId.HasValue)
-            {
                 query = query.Where(o => o.Items.Any(i => i.Product.SellerProfileId == request.SellerId.Value));
-            }
 
-            // Sorting
             query = ApplySorting(query, request);
 
             var totalCount = await query.CountAsync();
-            // Pagination
             var skip = (request.PageNumber - 1) * request.Limit;
 
             var items = await query
@@ -139,25 +134,23 @@ namespace Elara.Infrastructure.Repositories
             return request.SortBy switch
             {
                 OrderSortBy.Id => descending ? query.OrderByDescending(o => o.Id) : query.OrderBy(o => o.Id),
-
                 OrderSortBy.OrderDate => descending ? query.OrderByDescending(o => o.OrderDate) : query.OrderBy(o => o.OrderDate),
-
                 OrderSortBy.TotalAmount => descending ? query.OrderByDescending(o => o.TotalAmount) : query.OrderBy(o => o.TotalAmount),
-
                 OrderSortBy.Status => descending ? query.OrderByDescending(o => o.Status) : query.OrderBy(o => o.Status),
-
                 _ => query.OrderByDescending(o => o.OrderDate)
             };
         }
 
         public async Task<Order?> GetOrderByIdAsync(long id)
         {
-            return await _context.Orders.Include(o => o.Items)
+            return await _context.Orders
+                .Include(o => o.Items)
                 .Include(o => o.Payment)
                 .Include(o => o.Shipments)
                 .Include(o => o.StatusHistory)
-                .FirstOrDefaultAsync(o => o.Id == id);
+                .FirstOrDefaultAsync(o => !o.IsDeleted && o.Id == id);
         }
+
         public async Task<Order?> GetOrderDetailsAsync(long id)
         {
             return await _context.Orders
@@ -168,30 +161,29 @@ namespace Elara.Infrastructure.Repositories
                 .Include(o => o.Payment)
                 .Include(o => o.StatusHistory)
                 .Include(o => o.Items)
-                .ThenInclude(i => i.Product)
-                    .ThenInclude(p => p.SellerProfile)
-                        .ThenInclude(sp => sp.User)
+                    .ThenInclude(i => i.Product)
+                        .ThenInclude(p => p.SellerProfile)
+                            .ThenInclude(sp => sp.User)
                 .Include(o => o.Shipments)
                     .ThenInclude(s => s.SellerProfile)
                         .ThenInclude(sp => sp.User)
                 .Include(o => o.Shipments)
                     .ThenInclude(s => s.Items)
-                .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
+                .FirstOrDefaultAsync(o => !o.IsDeleted && o.Id == id);
         }
 
         public async Task UpdateOrderAsync(Order order)
         {
-            _context.Orders.Update(order);
             await _context.SaveChangesAsync();
         }
 
-        public async Task<PaginationQueryResult<Order>> GetCustomerOrdersAsync(long userId, PaginationRequest request)
+        public async Task<PaginationQueryResult<Order>> GetCustomerOrdersAsync(long userId, GetMyOrdersRequest request)
         {
             var query = _context.Orders
-               .AsNoTracking()
-               .Where(o => o.UserId == userId)
-               .Include(o => o.Items)
-               .AsQueryable();
+                .AsNoTracking()
+                .Where(o => !o.IsDeleted && o.UserId == userId)
+                .Include(o => o.Items)
+                .AsQueryable();
 
             var totalCount = await query.CountAsync();
 
@@ -216,25 +208,25 @@ namespace Elara.Infrastructure.Repositories
                     .ThenInclude(i => i.Product)
                 .Include(o => o.Shipments)
                     .ThenInclude(s => s.Items)
+                        .ThenInclude(si => si.OrderItem)
                 .Include(o => o.StatusHistory)
                 .Include(o => o.Payment)
                 .Include(o => o.ShippingMethod)
-                .FirstOrDefaultAsync(o =>
-                    o.Id == orderId &&
-                    o.UserId == userId);
+                .FirstOrDefaultAsync(o => !o.IsDeleted && o.Id == orderId && o.UserId == userId);
+        }
+
+        public async Task<Order?> GetCustomerOrderForUpdateAsync(long orderId, long userId)
+        {
+            return await _context.Orders
+                .Include(o => o.StatusHistory)
+                .FirstOrDefaultAsync(o => !o.IsDeleted && o.Id == orderId && o.UserId == userId);
         }
 
         public async Task<List<OrderStatusHistory>> GetOrderStatusHistoryAsync(long orderId, long userId)
         {
-            var orderExists = await _context.Orders
-                .AnyAsync(o => o.Id == orderId && o.UserId == userId);
-
-            if (!orderExists)
-                return null!;
-
             return await _context.OrderStatusHistories
                 .AsNoTracking()
-                .Where(h => h.OrderId == orderId)
+                .Where(h => h.OrderId == orderId && h.Order.UserId == userId && !h.Order.IsDeleted)
                 .OrderBy(h => h.CreatedAt)
                 .ToListAsync();
         }

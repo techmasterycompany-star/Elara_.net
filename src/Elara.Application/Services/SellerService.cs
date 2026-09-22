@@ -26,6 +26,7 @@ namespace Elara.Application.Services
         public async Task ApplyAsync(long userId, ApplyAsSellerDto request)
         {
             var existingApplication = await _sellerApplicationRepository.GetLatestApplicationByUserIdAsync(userId);
+            var existingSeller = await _sellerRepository.GetByUserIdAsync(userId);
 
             if (existingApplication != null)
             {
@@ -35,6 +36,9 @@ namespace Elara.Application.Services
                 if (existingApplication.Status == SellerApplicationStatus.Approved)
                     throw new ConflictException("You are already an approved seller.");
             }
+
+            if (existingSeller != null)
+                throw new ConflictException("You are already an approved seller.");
 
             var application = new SellerApplication
             {

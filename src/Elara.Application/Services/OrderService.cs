@@ -46,7 +46,7 @@ namespace Elara.Application.Services
                     ItemCount = items.Count,
                     SellerSubtotal = items.Sum(i => i.Subtotal)
                 };
-            });
+            }).ToList();
 
             return new PaginatedResponse<SellerOrderListDto>
             {
@@ -71,14 +71,19 @@ namespace Elara.Application.Services
                 throw new NotFoundException("Order not found.");
 
             var result = _mapper.Map<SellerOrderDetailsDto>(order);
+            var orderItems = order.Items.ToDictionary(i => i.Id);
 
             foreach (var item in result.Items)
             {
-                var entity = order.Items.First(i => i.Id == item.OrderItemId);
-                var shipped = entity.ShipmentItems.Sum(i => i.Quantity);
+                if (!orderItems.TryGetValue(item.OrderItemId, out var entity))
+                    continue;
+
+                var shipped = entity.ShipmentItems
+                    .Where(i => !i.Shipment.IsDeleted && i.Shipment.Status != ShipmentStatus.Returned)
+                    .Sum(i => i.Quantity);
 
                 item.QuantityShipped = shipped;
-                item.QuantityRemaining = entity.Quantity - shipped;
+                item.QuantityRemaining = Math.Max(0, entity.Quantity - shipped);
             }
 
             return result;
@@ -102,7 +107,9 @@ namespace Elara.Application.Services
         public async Task<AdminOrderDetailsDto> GetOrderByIdAsync(long orderId)
         {
             var order = await _orderRepository.GetOrderDetailsAsync(orderId);
-            if (order == null) throw new NotFoundException("Order Not Found");
+
+            if (order == null)
+                throw new NotFoundException("Order not found.");
 
             return _mapper.Map<AdminOrderDetailsDto>(order);
         }
@@ -110,55 +117,51 @@ namespace Elara.Application.Services
         public async Task UpdateOrderStatusAsync(long orderId, UpdateOrderStatusRequestDto updateRequest)
         {
             var order = await _orderRepository.GetOrderByIdAsync(orderId);
-            if (order == null) throw new NotFoundException("Order Not Found");
 
-            // validate business rules
-            if (order.Status == updateRequest.Status) 
+            if (order == null)
+                throw new NotFoundException("Order not found.");
+
+            if (order.Status == updateRequest.Status)
                 throw new ConflictException($"Order is already {updateRequest.Status}.");
 
-            if (!IsValidTransition(order.Status, updateRequest.Status))
+            if (updateRequest.Status is OrderStatus.Shipped or OrderStatus.Delivered)
+                throw new ConflictException("Shipped and Delivered statuses are updated automatically based on shipment statuses.");
+
+            if (!IsValidManualTransition(order.Status, updateRequest.Status))
                 throw new ConflictException($"Cannot change order status from {order.Status} to {updateRequest.Status}.");
 
-            if (updateRequest.Status == OrderStatus.Delivered && order.Shipments.Any(s => s.Status != ShipmentStatus.Delivered))
-                throw new ConflictException("Order cannot be marked as delivered until all shipments are delivered.");
-
-            if (updateRequest.Status == OrderStatus.Shipped && order.Shipments.Any(s => s.Status == ShipmentStatus.Pending))
-                throw new ConflictException("Order cannot be marked as shipped while it has pending shipments.");
-
-            //Update status
             order.Status = updateRequest.Status;
-            order.StatusHistory.Add(new OrderStatusHistory { 
+
+            var now = DateTime.UtcNow;
+
+            order.StatusHistory.Add(new OrderStatusHistory
+            {
                 OrderId = orderId,
-                Status = updateRequest.Status.ToString(), 
-                CreatedAt = DateTime.UtcNow, 
-                UpdatedAt = DateTime.UtcNow 
+                Status = updateRequest.Status.ToString(),
+                Notes = string.IsNullOrWhiteSpace(updateRequest.Notes) ? "No notes provided." : updateRequest.Notes,
+                CreatedAt = now,
+                UpdatedAt = now
             });
 
             await _orderRepository.UpdateOrderAsync(order);
         }
 
-        private static bool IsValidTransition(OrderStatus currentStatus, OrderStatus newStatus)
+        private static bool IsValidManualTransition(OrderStatus currentStatus, OrderStatus newStatus)
         {
             return currentStatus switch
             {
                 OrderStatus.Pending => newStatus is OrderStatus.Confirmed or OrderStatus.Cancelled,
-
-                OrderStatus.Confirmed => newStatus is OrderStatus.Shipped or OrderStatus.Cancelled,
-
-                OrderStatus.Shipped => newStatus is OrderStatus.Delivered,
-
+                OrderStatus.Confirmed => newStatus == OrderStatus.Cancelled,
+                OrderStatus.Shipped => false,
                 OrderStatus.Delivered => false,
-
                 OrderStatus.Cancelled => false,
-
                 _ => false
             };
         }
 
-        public async Task<PaginatedResponse<CustomerOrderListDto>> GetCustomerOrdersAsync(long userId, PaginationRequest request)
+        public async Task<PaginatedResponse<CustomerOrderListDto>> GetCustomerOrdersAsync(long userId, GetMyOrdersRequest request)
         {
             var orders = await _orderRepository.GetCustomerOrdersAsync(userId, request);
-
             var orderDtos = _mapper.Map<IEnumerable<CustomerOrderListDto>>(orders.Items).ToList();
 
             return new PaginatedResponse<CustomerOrderListDto>
@@ -183,7 +186,7 @@ namespace Elara.Application.Services
 
         public async Task CancelCustomerOrderAsync(long orderId, long userId)
         {
-            var order = await _orderRepository.GetCustomerOrderDetailsAsync(orderId, userId);
+            var order = await _orderRepository.GetCustomerOrderForUpdateAsync(orderId, userId);
 
             if (order == null)
                 throw new NotFoundException("Order not found.");
@@ -196,12 +199,15 @@ namespace Elara.Application.Services
 
             order.Status = OrderStatus.Cancelled;
 
+            var now = DateTime.UtcNow;
+
             order.StatusHistory.Add(new OrderStatusHistory
             {
                 OrderId = order.Id,
                 Status = OrderStatus.Cancelled.ToString(),
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                Notes = "Order cancelled by customer.",
+                CreatedAt = now,
+                UpdatedAt = now
             });
 
             await _orderRepository.UpdateOrderAsync(order);
@@ -214,9 +220,7 @@ namespace Elara.Application.Services
             if (order == null)
                 throw new NotFoundException("Order not found.");
 
-            var history = await _orderRepository.GetOrderStatusHistoryAsync(orderId, userId);
-
-            return _mapper.Map<IEnumerable<CustomerOrderStatusHistoryDto>>(history);
+            return _mapper.Map<IEnumerable<CustomerOrderStatusHistoryDto>>(order.StatusHistory.OrderBy(h => h.CreatedAt));
         }
     }
 }

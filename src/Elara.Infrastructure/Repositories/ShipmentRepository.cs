@@ -19,56 +19,50 @@ namespace Elara.Infrastructure.Repositories
         public async Task<PaginationQueryResult<Shipment>> GetAllShipmentsAsync(AdminShipmentFilterDto request)
         {
             var query = _context.Shipments
-                   .AsNoTracking()
-                   .Include(o => o.SellerProfile).ThenInclude(sp => sp.User)
-                   .Include(o => o.Items).ThenInclude(si => si.OrderItem)
-                   .AsQueryable();
+                .AsNoTracking()
+                .Where(s => !s.IsDeleted)
+                .Include(s => s.SellerProfile)
+                    .ThenInclude(sp => sp.User)
+                .Include(s => s.Items)
+                    .ThenInclude(si => si.OrderItem)
+                        .ThenInclude(oi => oi.Product)
+                .AsQueryable();
 
-            // Search
             if (!string.IsNullOrWhiteSpace(request.Search))
             {
                 var search = request.Search.Trim();
 
-                query = query.Where(s => s.Carrier.Contains(search) ||
-                                         s.TrackingNumber.Contains(search) ||
-                                         s.SellerProfile.User.FullName.Contains(search) ||
-                                         s.Items.Any(i => i.OrderItem.Product.Name.Contains(search)));
+                query = query.Where(s =>
+                    s.Carrier.Contains(search) ||
+                    s.TrackingNumber.Contains(search) ||
+                    s.SellerProfile.User.FullName.Contains(search) ||
+                    s.Items.Any(i => i.OrderItem.Product.Name.Contains(search)));
             }
 
-            // Status
             if (request.Status.HasValue)
-            {
-                query = query.Where(o => o.Status == request.Status.Value);
-            }
+                query = query.Where(s => s.Status == request.Status.Value);
 
-            // Date range
             if (request.FromDate.HasValue)
             {
-                query = query.Where(o => o.ShippedDate >= request.FromDate.Value);
+                var fromDate = request.FromDate.Value.Date;
+                query = query.Where(s => s.ShippedDate >= fromDate);
             }
 
             if (request.ToDate.HasValue)
             {
-                query = query.Where(o => o.ShippedDate <= request.ToDate.Value);
+                var toDate = request.ToDate.Value.Date.AddDays(1);
+                query = query.Where(s => s.ShippedDate < toDate);
             }
 
-            // Customer
             if (request.CustomerId.HasValue)
-            {
-                query = query.Where(o => o.Order.UserId == request.CustomerId.Value);
-            }
+                query = query.Where(s => s.Order.UserId == request.CustomerId.Value);
 
-            // Seller
             if (request.SellerId.HasValue)
-            {
-                query = query.Where(o => o.SellerProfileId == request.SellerId.Value);
-            }
+                query = query.Where(s => s.SellerProfileId == request.SellerId.Value);
 
-            // Sorting
             query = ApplySorting(query, request);
 
             var totalCount = await query.CountAsync();
-            // Pagination
             var skip = (request.PageNumber - 1) * request.Limit;
 
             var items = await query
@@ -102,21 +96,23 @@ namespace Elara.Infrastructure.Repositories
         public async Task<Shipment?> GetShipmentByIdAsync(long id)
         {
             return await _context.Shipments
-                .Include(o => o.Items).ThenInclude(s => s.OrderItem).ThenInclude(oi => oi.Product)
-                .Include(o => o.SellerProfile).ThenInclude(sp => sp.User)
-                .FirstOrDefaultAsync(o => o.Id == id);
+                .Include(s => s.Items)
+                    .ThenInclude(si => si.OrderItem)
+                        .ThenInclude(oi => oi.Product)
+                .Include(s => s.SellerProfile)
+                    .ThenInclude(sp => sp.User)
+                .FirstOrDefaultAsync(s => !s.IsDeleted && s.Id == id);
         }
 
         public async Task UpdateShipmentAsync(Shipment shipment)
         {
-            _context.Shipments.Update(shipment);
             await _context.SaveChangesAsync();
         }
 
         public async Task<List<Shipment>> GetShipmentsByOrderIdAsync(long orderId)
         {
             return await _context.Shipments
-                .Where(s => s.OrderId == orderId && !s.IsDeleted)
+                .Where(s => !s.IsDeleted && s.OrderId == orderId)
                 .ToListAsync();
         }
 
@@ -127,7 +123,7 @@ namespace Elara.Infrastructure.Repositories
                 .Where(s => !s.IsDeleted && s.SellerProfileId == sellerProfileId)
                 .Include(s => s.Items)
                     .ThenInclude(i => i.OrderItem)
-                    .ThenInclude(i => i.Product)
+                        .ThenInclude(i => i.Product)
                 .AsQueryable();
 
             if (query.Status.HasValue)
@@ -136,9 +132,9 @@ namespace Elara.Infrastructure.Repositories
             if (query.OrderId.HasValue)
                 shipments = shipments.Where(s => s.OrderId == query.OrderId.Value);
 
-            var desc = query.SortOrder == SortOrderEnum.Desc;
-
-            shipments = desc ? shipments.OrderByDescending(s => s.CreatedAt) : shipments.OrderBy(s => s.CreatedAt);
+            shipments = query.SortOrder == SortOrderEnum.Desc
+                ? shipments.OrderByDescending(s => s.CreatedAt)
+                : shipments.OrderBy(s => s.CreatedAt);
 
             var totalCount = await shipments.CountAsync();
 
@@ -159,7 +155,7 @@ namespace Elara.Infrastructure.Repositories
             return await _context.Shipments
                 .Include(s => s.Items)
                     .ThenInclude(i => i.OrderItem)
-                    .ThenInclude(i => i.Product)
+                        .ThenInclude(i => i.Product)
                 .FirstOrDefaultAsync(s => !s.IsDeleted && s.Id == shipmentId && s.SellerProfileId == sellerProfileId);
         }
 
@@ -168,6 +164,7 @@ namespace Elara.Infrastructure.Repositories
             _context.Shipments.Add(shipment);
             return Task.FromResult(shipment);
         }
+
         public async Task SaveChangesAsync()
         {
             await _context.SaveChangesAsync();
@@ -179,9 +176,7 @@ namespace Elara.Infrastructure.Repositories
                 .AsNoTracking()
                 .Include(s => s.Items)
                     .ThenInclude(i => i.OrderItem)
-                .Where(s =>
-                    s.OrderId == orderId &&
-                    s.Order.UserId == userId)
+                .Where(s => !s.IsDeleted && s.OrderId == orderId && s.Order.UserId == userId)
                 .OrderBy(s => s.Id)
                 .ToListAsync();
         }
@@ -193,10 +188,7 @@ namespace Elara.Infrastructure.Repositories
                 .Include(s => s.Items)
                     .ThenInclude(i => i.OrderItem)
                         .ThenInclude(oi => oi.Product)
-                .FirstOrDefaultAsync(s =>
-                    s.Id == shipmentId &&
-                    s.OrderId == orderId &&
-                    s.Order.UserId == userId);
+                .FirstOrDefaultAsync(s => !s.IsDeleted && s.Id == shipmentId && s.OrderId == orderId && s.Order.UserId == userId);
         }
     }
 }

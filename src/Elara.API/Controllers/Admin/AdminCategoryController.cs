@@ -43,14 +43,14 @@ namespace Elara.API.Controllers.Admin
         public async Task<IActionResult> UpdateCategoryAsync(long id, [FromBody] UpdateCategoryDto category)
         {
             await _categoryService.UpdateCategoryAsync(id, category);
-            return StatusCode(204, ApiResponse<string>.SuccessResponse("Category updated successfully."));
+            return Ok(ApiResponse<string>.SuccessResponse("Category updated successfully."));
         }
 
         [HttpDelete("{id:long}")]
         public async Task<IActionResult> DeleteCategoryAsync(long id)
         {
             await _categoryService.DeleteCategoryAsync(id);
-            return StatusCode(204, ApiResponse<string>.SuccessResponse("Category deleted successfully."));
+            return Ok(ApiResponse<string>.SuccessResponse("Category deleted successfully."));
         }
     }
 }

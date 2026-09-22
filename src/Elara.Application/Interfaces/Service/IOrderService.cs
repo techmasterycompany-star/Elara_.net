@@ -11,7 +11,7 @@ namespace Elara.Application.Interfaces.Service
         Task<PaginatedResponse<AdminOrderListDto>> GetAllOrdersAsync(AdminOrderFilterDto orderRequest);
         Task<AdminOrderDetailsDto> GetOrderByIdAsync(long orderId);
         Task UpdateOrderStatusAsync(long orderId, UpdateOrderStatusRequestDto updateRequest);
-        Task<PaginatedResponse<CustomerOrderListDto>> GetCustomerOrdersAsync(long userId, PaginationRequest request);
+        Task<PaginatedResponse<CustomerOrderListDto>> GetCustomerOrdersAsync(long userId, GetMyOrdersRequest request);
         Task<CustomerOrderDetailsDto> GetCustomerOrderByIdAsync(long orderId, long userId);
         Task CancelCustomerOrderAsync(long orderId, long userId);
         Task<IEnumerable<CustomerOrderStatusHistoryDto>> GetOrderStatusHistoryAsync(long orderId, long userId);

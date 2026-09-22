@@ -27,10 +27,10 @@ namespace Elara.Infrastructure.Repositories
 
             if (!string.IsNullOrEmpty(categoryRequest.Search))
             {
-                query = query.Where(c => c.Name.Contains(categoryRequest.Search, StringComparison.OrdinalIgnoreCase));
+                query = query.Where(c => c.Name.Contains(categoryRequest.Search));
             }
 
-            if(categoryRequest.ParentCategoryId.HasValue)
+            if (categoryRequest.ParentCategoryId.HasValue)
             {
                 query = query.Where(c => c.ParentCategoryId == categoryRequest.ParentCategoryId.Value);
             }
@@ -61,14 +61,14 @@ namespace Elara.Infrastructure.Repositories
 
         public async Task<Category?> GetCategoryByIdAsync(long id)
         {
-            return await _context.Categories.Include(c => c.ParentCategory).FirstOrDefaultAsync(c => c.Id == id);
+            return await _context.Categories.Include(c => c.ParentCategory).FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted);
         }
 
         public async Task CreateCategoryAsync(Category category)
         {
             await _context.Categories.AddAsync(category);
             await _context.SaveChangesAsync();
-        }        
+        }
 
         public async Task UpdateCategoryAsync(Category category)
         {
@@ -78,7 +78,35 @@ namespace Elara.Infrastructure.Repositories
 
         public Task<bool> CategoryNameExistsAsync(string name, long? excludeId = null)
         {
-            return _context.Categories.AnyAsync(c => c.Name.ToLower() == name.ToLower() && (!excludeId.HasValue || c.Id != excludeId.Value));
+            return _context.Categories.AnyAsync(c => !c.IsDeleted && c.Name.ToLower() == name.ToLower() && (!excludeId.HasValue || c.Id != excludeId.Value));
+        }
+
+        public async Task<bool> IsDescendantAsync(long categoryId, long potentialAncestorId)
+        {
+            var currentId = potentialAncestorId;
+
+            while (true)
+            {
+                var parentId = await _context.Categories.Where(c => c.Id == currentId && !c.IsDeleted).Select(c => c.ParentCategoryId).FirstOrDefaultAsync();
+
+                if (!parentId.HasValue)
+                    return false;
+
+                if (parentId.Value == categoryId)
+                    return true;
+
+                currentId = parentId.Value;
+            }
+        }
+
+        public async Task<bool> HasActiveChildrenAsync(long categoryId)
+        {
+            return await _context.Categories.AnyAsync(c => c.ParentCategoryId == categoryId && !c.IsDeleted);
+        }
+
+        public async Task<bool> HasActiveProductsAsync(long categoryId)
+        {
+            return await _context.Products.AnyAsync(p => p.CategoryId == categoryId && !p.IsDeleted && p.IsActive);
         }
     }
 }
