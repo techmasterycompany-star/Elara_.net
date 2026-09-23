@@ -44,6 +44,7 @@ namespace Elara.Infrastructure
             services.AddScoped<IShippingMethodRepository, ShippingMethodRepository>();
             services.AddScoped<ISellerApplicationRepository, SellerApplicationRepository>();
             services.AddScoped<ISellerRepository, SellerRepository>();
+            services.AddScoped<IReviewRepository, ReviewRepository>();
 
             services.Configure<CloudinarySettings>(configuration.GetSection("Cloudinary"));
 

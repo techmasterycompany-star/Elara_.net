@@ -76,7 +76,7 @@ namespace Elara.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Addresses");
+                    b.ToTable("Addresses", (string)null);
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.Auth.EmailConfirmation", b =>
@@ -114,7 +114,7 @@ namespace Elara.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("EmailConfirmations");
+                    b.ToTable("EmailConfirmations", (string)null);
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.Auth.PasswordResetToken", b =>
@@ -152,7 +152,7 @@ namespace Elara.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("PasswordResetTokens");
+                    b.ToTable("PasswordResetTokens", (string)null);
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.Auth.RefreshToken", b =>
@@ -202,7 +202,7 @@ namespace Elara.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("RefreshTokens");
+                    b.ToTable("RefreshTokens", (string)null);
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.Auth.RevokedToken", b =>
@@ -236,7 +236,7 @@ namespace Elara.Infrastructure.Migrations
                     b.HasIndex("Jti")
                         .IsUnique();
 
-                    b.ToTable("RevokedTokens");
+                    b.ToTable("RevokedTokens", (string)null);
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.Banner", b =>
@@ -328,7 +328,7 @@ namespace Elara.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("[UserId] IS NOT NULL");
 
-                    b.ToTable("Carts");
+                    b.ToTable("Carts", (string)null);
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.CartItem", b =>
@@ -363,7 +363,7 @@ namespace Elara.Infrastructure.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("CartItems");
+                    b.ToTable("CartItems", (string)null);
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.Category", b =>
@@ -403,7 +403,7 @@ namespace Elara.Infrastructure.Migrations
 
                     b.HasIndex("ParentCategoryId");
 
-                    b.ToTable("Categories");
+                    b.ToTable("Categories", (string)null);
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.DeviceToken", b =>
@@ -591,7 +591,7 @@ namespace Elara.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Notifications");
+                    b.ToTable("Notifications", (string)null);
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.Order", b =>
@@ -696,7 +696,7 @@ namespace Elara.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Orders");
+                    b.ToTable("Orders", (string)null);
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.OrderItem", b =>
@@ -737,7 +737,7 @@ namespace Elara.Infrastructure.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("OrderItems");
+                    b.ToTable("OrderItems", (string)null);
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.OrderStatusHistory", b =>
@@ -771,7 +771,7 @@ namespace Elara.Infrastructure.Migrations
 
                     b.HasIndex("OrderId");
 
-                    b.ToTable("OrderStatusHistories");
+                    b.ToTable("OrderStatusHistories", (string)null);
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.Payment", b =>
@@ -827,7 +827,7 @@ namespace Elara.Infrastructure.Migrations
                     b.HasIndex("OrderId")
                         .IsUnique();
 
-                    b.ToTable("Payments");
+                    b.ToTable("Payments", (string)null);
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.PaymentMethod", b =>
@@ -872,7 +872,7 @@ namespace Elara.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("PaymentMethods");
+                    b.ToTable("PaymentMethods", (string)null);
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.Payout", b =>
@@ -905,7 +905,7 @@ namespace Elara.Infrastructure.Migrations
 
                     b.HasIndex("SellerProfileId");
 
-                    b.ToTable("Payouts");
+                    b.ToTable("Payouts", (string)null);
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.Product", b =>
@@ -959,7 +959,7 @@ namespace Elara.Infrastructure.Migrations
 
                     b.HasIndex("SellerProfileId");
 
-                    b.ToTable("Products");
+                    b.ToTable("Products", (string)null);
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.ProductImage", b =>
@@ -996,7 +996,7 @@ namespace Elara.Infrastructure.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("ProductImages");
+                    b.ToTable("ProductImages", (string)null);
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.PromoCode", b =>
@@ -1050,7 +1050,7 @@ namespace Elara.Infrastructure.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
-                    b.ToTable("PromoCodes");
+                    b.ToTable("PromoCodes", (string)null);
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.Referral", b =>
@@ -1166,7 +1166,7 @@ namespace Elara.Infrastructure.Migrations
                     b.HasIndex("UserId", "ProductId")
                         .IsUnique();
 
-                    b.ToTable("Reviews");
+                    b.ToTable("Reviews", (string)null);
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.Role", b =>
@@ -1193,7 +1193,7 @@ namespace Elara.Infrastructure.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("Roles");
+                    b.ToTable("Roles", (string)null);
 
                     b.HasData(
                         new
@@ -1258,7 +1258,7 @@ namespace Elara.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("[Status] = 1");
 
-                    b.ToTable("SellerApplications");
+                    b.ToTable("SellerApplications", (string)null);
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.SellerProfile", b =>
@@ -1302,7 +1302,7 @@ namespace Elara.Infrastructure.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("SellerProfiles");
+                    b.ToTable("SellerProfiles", (string)null);
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.Shipment", b =>
@@ -1359,7 +1359,7 @@ namespace Elara.Infrastructure.Migrations
 
                     b.HasIndex("SellerProfileId");
 
-                    b.ToTable("Shipments");
+                    b.ToTable("Shipments", (string)null);
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.ShipmentItem", b =>
@@ -1391,7 +1391,7 @@ namespace Elara.Infrastructure.Migrations
 
                     b.HasIndex("ShipmentId");
 
-                    b.ToTable("ShipmentItems");
+                    b.ToTable("ShipmentItems", (string)null);
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.ShippingMethod", b =>
@@ -1435,7 +1435,7 @@ namespace Elara.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ShippingMethods");
+                    b.ToTable("ShippingMethods", (string)null);
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.Transaction", b =>
@@ -1470,7 +1470,7 @@ namespace Elara.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("LoyaltyTransactions");
+b.ToTable("LoyaltyTransactions");
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.User", b =>
@@ -1535,7 +1535,7 @@ namespace Elara.Infrastructure.Migrations
                     b.HasIndex("Username")
                         .IsUnique();
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.UserRole", b =>
@@ -1550,7 +1550,7 @@ namespace Elara.Infrastructure.Migrations
 
                     b.HasIndex("RoleId");
 
-                    b.ToTable("UserRoles");
+                    b.ToTable("UserRoles", (string)null);
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.Wallet", b =>
@@ -1588,7 +1588,7 @@ namespace Elara.Infrastructure.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("Wallets");
+                    b.ToTable("Wallets", (string)null);
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.WalletTransaction", b =>
@@ -1636,7 +1636,7 @@ namespace Elara.Infrastructure.Migrations
 
                     b.HasIndex("WalletId");
 
-                    b.ToTable("WalletTransactions");
+                    b.ToTable("WalletTransactions", (string)null);
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.Wishlist", b =>
@@ -1669,7 +1669,7 @@ namespace Elara.Infrastructure.Migrations
                     b.HasIndex("UserId", "ProductId")
                         .IsUnique();
 
-                    b.ToTable("Wishlists");
+                    b.ToTable("Wishlists", (string)null);
                 });
 
             modelBuilder.Entity("Elara.Domain.Entities.Address", b =>

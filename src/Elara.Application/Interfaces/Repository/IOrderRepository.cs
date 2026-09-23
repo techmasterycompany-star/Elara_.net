@@ -16,5 +16,6 @@ namespace Elara.Application.Interfaces.Repository
         Task<Order?> GetCustomerOrderDetailsAsync(long orderId, long userId);
         Task<Order?> GetCustomerOrderForUpdateAsync(long orderId, long userId);
         Task<List<OrderStatusHistory>> GetOrderStatusHistoryAsync(long orderId, long userId);
+        Task<bool> HasUserPurchasedProductAsync(long userId, long productId);
     }
 }

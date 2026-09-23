@@ -231,5 +231,15 @@ namespace Elara.Infrastructure.Repositories
                 .OrderBy(h => h.CreatedAt)
                 .ToListAsync();
         }
+
+        public async Task<bool> HasUserPurchasedProductAsync(long userId, long productId)
+        {
+            return await _context.Orders
+                .Where(o => o.UserId == userId 
+                    && o.Status == Elara.Domain.Enums.OrderStatus.Delivered
+                    && o.Items.Any(i => i.ProductId == productId)
+                    && !o.IsDeleted)
+                .AnyAsync();
+        }
     }
 }
