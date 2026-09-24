@@ -181,6 +181,8 @@ namespace Elara.Application.Services
                 CardDetails = request.CardDetails
             });
 
+            await _checkoutRepository.ClearCartAsync(request.CartId.Value);
+
             return new CheckoutResponse
             {
                 OrderId = createdOrder.Id,
