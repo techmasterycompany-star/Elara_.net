@@ -115,11 +115,6 @@ namespace Elara.Application.Services
                     throw new BadRequestException("Unsupported payment method");
             }
 
-            if (result.Status == PaymentStatus.Completed)
-            {
-                await CompleteOrderAsync(order, payment);
-            }
-
             await _paymentRepository.UpdateAsync(payment);
             await _orderRepository.UpdateOrderAsync(order);
 
@@ -141,8 +136,6 @@ namespace Elara.Application.Services
             var stripeResponse = await _stripeService.CreatePaymentIntentAsync(stripeRequest);
 
             payment.TransactionId = stripeResponse.PaymentIntentId;
-            payment.Status = stripeResponse.RequiresAction ? PaymentStatus.Pending : PaymentStatus.Completed;
-            payment.PaidAt = stripeResponse.RequiresAction ? null : DateTime.UtcNow;
 
             return new PaymentResponseDto
             {
@@ -202,6 +195,12 @@ namespace Elara.Application.Services
             payment.Provider = "COD";
             payment.PaidAt = DateTime.UtcNow;
             payment.UpdatedAt = DateTime.UtcNow;
+
+            var order = await _orderRepository.GetOrderByIdAsync(payment.OrderId);
+            if (order == null)
+                throw new NotFoundException("Order not found");
+
+            await CompleteOrderAsync(order, payment);
 
             return new PaymentResponseDto
             {
@@ -300,7 +299,14 @@ namespace Elara.Application.Services
 
             if (webhook.Status == PaymentStatus.Completed)
             {
-                await CompleteOrderAsync(order, payment);
+                if (payment.Status != PaymentStatus.Completed)
+                {
+                    payment.Status = PaymentStatus.Completed;
+                    payment.PaidAt = DateTime.UtcNow;
+
+                    await CompleteOrderAsync(order, payment);
+
+                }
             }
             else if (webhook.Status == PaymentStatus.Failed || webhook.Status == PaymentStatus.Cancelled)
             {

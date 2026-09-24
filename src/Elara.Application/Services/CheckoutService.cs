@@ -181,20 +181,10 @@ namespace Elara.Application.Services
                 CardDetails = request.CardDetails
             });
 
-            var checkoutStatus = paymentResponse.Status == PaymentStatus.Completed
-                ? OrderStatus.Confirmed
-                : OrderStatus.Pending;
-
-            if (paymentResponse.Status == PaymentStatus.Completed && request.CartId.HasValue)
-            {
-                await _checkoutRepository.ClearCartAsync(request.CartId.Value);
-            }
-
             return new CheckoutResponse
             {
                 OrderId = createdOrder.Id,
                 OrderNumber = $"ORD-{createdOrder.Id:D8}",
-                Status = checkoutStatus,
                 OrderDate = createdOrder.OrderDate,
                 TotalAmount = createdOrder.TotalAmount,
                 PaymentMethod = payment.Method,
