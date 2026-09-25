@@ -32,6 +32,7 @@ namespace Elara.Application.Services
 
         public async Task<CartDto> GetCartItemsAsync(long? userId, string? guestSessionId)
         {
+            await CheckAuthorizationAsync(userId, guestSessionId);
             var cart = await GetCartAsync(userId, guestSessionId);
 
             if (cart == null)
@@ -51,6 +52,7 @@ namespace Elara.Application.Services
 
         public async Task<CartItemDto> AddToCartAsync(long? userId, string? guestSessionId, AddToCartDto addToCartDto)
         {
+            await CheckAuthorizationAsync(userId, guestSessionId);
             if (addToCartDto.Quantity <= 0)
                 throw new BadRequestException("Quantity must be greater than zero");
 
@@ -115,6 +117,7 @@ namespace Elara.Application.Services
 
         public async Task RemoveFromCartAsync(long? userId, string? guestSessionId, long productId)
         {
+            await CheckAuthorizationAsync(userId, guestSessionId);
             var cart = await GetCartAsync(userId, guestSessionId);
             if (cart == null)
                 throw new NotFoundException("Cart not found");
@@ -129,6 +132,7 @@ namespace Elara.Application.Services
 
         public async Task<CartItemDto> UpdateCartItemQuantityAsync(long? userId, string? guestSessionId, long productId, int quantity)
         {
+            await CheckAuthorizationAsync(userId, guestSessionId);
             if (quantity <= 0)
                 throw new BadRequestException("Quantity must be greater than zero");
 
@@ -164,6 +168,7 @@ namespace Elara.Application.Services
 
         private async Task<Cart?> GetCartAsync(long? userId, string? guestSessionId)
         {
+            await CheckAuthorizationAsync(userId, guestSessionId);
             if (userId.HasValue)
                 return await _cartRepository.GetCartByUserIdAsync(userId.Value);
 
@@ -171,6 +176,12 @@ namespace Elara.Application.Services
                 throw new BadRequestException("Guest session ID is required");
 
             return await _cartRepository.GetCartByGuestSessionIdAsync(guestSessionId);
+        }
+
+        private async Task CheckAuthorizationAsync(long? userId, string? guestSessionId)
+        {
+            if (userId == null && string.IsNullOrWhiteSpace(guestSessionId))
+                throw new UnauthorizedAccessException("Either user ID or guest session ID must be provided");
         }
     }
 }

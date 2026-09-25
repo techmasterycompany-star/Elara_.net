@@ -36,6 +36,7 @@ namespace Elara.Application.Services
 
         public async Task<CheckoutPreviewResponse> PreviewCheckoutAsync(long? userId, string? guestSessionId, CheckoutPreviewRequest request)
         {
+            await CheckAuthorizationAsync(userId, guestSessionId);
             // Get checkout items
             var checkoutItems = await GetCheckoutItemsAsync(userId, guestSessionId, request.CartId);
 
@@ -82,6 +83,7 @@ namespace Elara.Application.Services
 
         public async Task<CheckoutResponse> ProcessCheckoutAsync(long? userId, string? guestSessionId, CheckoutRequest request)
         {
+            await CheckAuthorizationAsync(userId, guestSessionId);
             var checkoutItems = await GetCheckoutItemsAsync(userId, guestSessionId, request.CartId);
             await ValidateCheckoutItemsAsync(checkoutItems);
 
@@ -317,6 +319,12 @@ namespace Elara.Application.Services
                 PaymentMethodType.Wallet => "Wallet",
                 _ => "Unknown"
             };
+        }
+
+        private async Task CheckAuthorizationAsync(long? userId, string? guestSessionId)
+        {
+            if (userId == null && string.IsNullOrWhiteSpace(guestSessionId))
+                throw new UnauthorizedAccessException("Either user ID or guest session ID must be provided");
         }
 
     }
