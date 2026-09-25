@@ -39,12 +39,12 @@ namespace Elara.Application.Services
         public async Task<RedeemPointsResultDto> RedeemAsync(long userId, int points, CancellationToken cancellationToken = default)
         {
             if (points <= 0)
-                return Invalid("REDEEM_INVALID_AMOUNT", "Points to redeem must be greater than zero.");
+                return Invalid("Points to redeem must be greater than zero.");
 
             var currentBalance = await CalculateBalanceAsync(userId, cancellationToken);
 
             if (points > currentBalance)
-                return Invalid("REDEEM_INSUFFICIENT_BALANCE", "You do not have enough points to redeem this amount.");
+                return Invalid("You do not have enough points to redeem this amount.");
 
             var transaction = new Transaction
             {
@@ -73,10 +73,9 @@ namespace Elara.Application.Services
             return earned - redeemed;
         }
 
-        private static RedeemPointsResultDto Invalid(string errorCode, string message) => new()
+        private static RedeemPointsResultDto Invalid(string message) => new()
         {
             IsSuccess = false,
-            ErrorCode = errorCode,
             ErrorMessage = message
         };
     }

@@ -44,6 +44,14 @@ namespace Elara.Infrastructure.Data
         public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
         public DbSet<SellerApplication> SellerApplications => Set<SellerApplication>();
         public DbSet<Banner> Banners => Set<Banner>();
+        public DbSet<Language> Languages => Set<Language>();
+        public DbSet<Transaction> LoyaltyTransactions => Set<Transaction>();
+        public DbSet<Referral> Referrals => Set<Referral>();
+        public DbSet<NewsletterSubscription> NewsletterSubscriptions => Set<NewsletterSubscription>();
+        public DbSet<ResourceString> ResourceStrings => Set<ResourceString>();
+        public DbSet<DeviceToken> DeviceTokens => Set<DeviceToken>();
+
+
         public DbSet<HomepageSection> HomepageSections => Set<HomepageSection>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

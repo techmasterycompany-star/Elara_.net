@@ -1,4 +1,5 @@
-﻿using Elara.Application.Interfaces;
+﻿using Elara.Application.DTOs;
+using Elara.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -7,7 +8,7 @@ namespace Elara.API.Controllers
 {
     [ApiController]
     [Route("api/referrals")]
-    //[Authorize]
+    [Authorize]
     public class ReferralsController : ControllerBase
     {
         private readonly IReferralService _referralService;
@@ -30,6 +31,16 @@ namespace Elara.API.Controllers
         {
             var referredUserId = GetCurrentUserId();
             var result = await _referralService.ApplyAsync(referredUserId, request.Code);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+
+        [HttpPost("invite")]
+        public async Task<IActionResult> InviteFriend([FromBody] InviteFriendRequestDto request)
+        {
+            var userId = GetCurrentUserId();
+            var senderName = User.FindFirst(ClaimTypes.Name)?.Value ?? "A friend";
+
+            var result = await _referralService.InviteFriendAsync(userId, senderName, request.FriendEmail);
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 

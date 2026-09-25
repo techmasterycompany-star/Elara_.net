@@ -1,7 +1,9 @@
-﻿using Elara.Application.Interfaces.Service;
+﻿using Elara.Application.Interfaces;
+using Elara.Application.Interfaces.Service;
 using Elara.Application.Interfaces.Service.Auth;
 using Elara.Application.Services;
 using Elara.Application.Services.Auth;
+using Elara.Infrastructure.Services;
 using FluentValidation;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,6 +20,17 @@ namespace Elara.Application
             services.AddScoped<IProfileService, ProfileService>();
 
             services.AddAutoMapper(typeof(DependencyInjection).Assembly);
+
+            services.AddScoped<ILocalizationService, LocalizationService>();
+            services.AddScoped<IDeviceTokenService, DeviceTokenService>();
+            services.AddScoped<IPushNotificationSender, FcmPushNotificationSender>();
+            services.AddScoped<INewsletterService, NewsletterService>();
+            services.AddScoped<IEmailCampaignSender, SmtpEmailCampaignSender>();
+            services.AddScoped<IReferralService, ReferralService>();
+            services.AddScoped<IPromoCodeService, PromoCodeService>();
+            services.AddScoped<ILoyaltyService, LoyaltyService>();
+
+
 
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IOrderService, OrderService>();

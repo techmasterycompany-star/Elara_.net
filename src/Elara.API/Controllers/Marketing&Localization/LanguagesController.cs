@@ -40,9 +40,9 @@ namespace Elara.API.Controllers
         }
 
         [HttpGet("resource-strings")]
-        public async Task<IActionResult> GetResourceStrings([FromQuery] string lang)
+        public async Task<IActionResult> GetResourceStrings([FromQuery] string languageCode)
         {
-            var result = await _localizationService.GetResourceStringsAsync(lang);
+            var result = await _localizationService.GetResourceStringsAsync(languageCode);
             return Ok(result);
         }
 
