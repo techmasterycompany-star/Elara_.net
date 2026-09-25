@@ -76,7 +76,7 @@ namespace Elara.Infrastructure.Repositories
             }
             else
             {
-                return await _context.Orders.FirstOrDefaultAsync(o => o.UserId == null && o.GuestPhoneNumber == order.GuestPhoneNumber && o.Status == OrderStatus.Pending);
+                return await _context.Orders.FirstOrDefaultAsync(o => o.GuestSessionId == order.GuestSessionId && o.Status == OrderStatus.Pending);
             }
         }
 
@@ -84,6 +84,18 @@ namespace Elara.Infrastructure.Repositories
         {
             var cartItems = await _context.CartItems
                 .Where(ci => ci.CartId == cartId)
+                .ToListAsync();
+
+            _context.CartItems.RemoveRange(cartItems);
+            var result = await _context.SaveChangesAsync();
+            return result > 0;
+        }
+
+        public async Task<bool> ClearCartForUserAsync(long? userId, string? guestSessionId)
+        {
+            var cartItems = await _context.CartItems
+                .Where(ci => (userId.HasValue && ci.Cart.UserId == userId.Value) ||
+                    (!userId.HasValue && ci.Cart.GuestSessionId == guestSessionId))
                 .ToListAsync();
 
             _context.CartItems.RemoveRange(cartItems);

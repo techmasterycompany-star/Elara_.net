@@ -1,4 +1,5 @@
 using AutoMapper;
+using Elara.Application.DTOs.Checkout;
 using Elara.Application.DTOs.Payment;
 using Elara.Application.Exceptions;
 using Elara.Application.Interfaces.Repository;
@@ -12,6 +13,7 @@ namespace Elara.Application.Services
     public class PaymentService : IPaymentService
     {
         private readonly IPaymentRepository _paymentRepository;
+        private readonly ICheckoutRepository _checkoutRepository;
         private readonly IOrderRepository _orderRepository;
         private readonly IWalletRepository _walletRepository;
         private readonly IMapper _mapper;
@@ -22,6 +24,7 @@ namespace Elara.Application.Services
 
         public PaymentService(
             IPaymentRepository paymentRepository,
+            ICheckoutRepository checkoutRepository,
             IOrderRepository orderRepository,
             IWalletRepository walletRepository,
             IMapper mapper,
@@ -31,6 +34,7 @@ namespace Elara.Application.Services
             IWalletService walletService)
         {
             _paymentRepository = paymentRepository;
+            _checkoutRepository = checkoutRepository;
             _orderRepository = orderRepository;
             _walletRepository = walletRepository;
             _mapper = mapper;
@@ -234,6 +238,12 @@ namespace Elara.Application.Services
             payment.Provider = "Wallet";
             payment.TransactionId = walletResult.TransactionId;
 
+            var order = await _orderRepository.GetOrderByIdAsync(payment.OrderId);
+            if (order == null)
+                throw new NotFoundException("Order not found");
+
+            await CompleteOrderAsync(order, payment);
+
             return new PaymentResponseDto
             {
                 PaymentId = payment.Id,
@@ -252,6 +262,20 @@ namespace Elara.Application.Services
 
         private async Task CompleteOrderAsync(Order order, Payment payment)
         {
+            if (order.Status == OrderStatus.Confirmed)
+                return;
+
+            await _checkoutRepository.UpdateStockAsync(order.Items.Select(item => new CheckoutItemPreviewDto
+            {
+                ProductId = item.ProductId,
+                Quantity = item.Quantity,
+                UnitPrice = item.UnitPrice,
+                Discount = item.Discount,
+                Subtotal = item.Subtotal
+            }));
+
+            await _checkoutRepository.ClearCartForUserAsync(order.UserId, order.GuestSessionId);
+
             order.Status = OrderStatus.Confirmed;
             order.UpdatedAt = DateTime.UtcNow;
 
@@ -293,13 +317,14 @@ namespace Elara.Application.Services
             if (order == null)
                 throw new NotFoundException("Order not found");
 
+            var wasPaymentCompleted = payment.Status == PaymentStatus.Completed;
             payment.Status = webhook.Status;
             payment.PaidAt = webhook.Status == PaymentStatus.Completed ? DateTime.UtcNow : payment.PaidAt;
             payment.UpdatedAt = DateTime.UtcNow;
 
             if (webhook.Status == PaymentStatus.Completed)
             {
-                if (payment.Status != PaymentStatus.Completed)
+                if (!wasPaymentCompleted)
                 {
                     payment.Status = PaymentStatus.Completed;
                     payment.PaidAt = DateTime.UtcNow;

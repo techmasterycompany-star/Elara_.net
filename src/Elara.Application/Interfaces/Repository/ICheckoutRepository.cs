@@ -15,6 +15,7 @@ namespace Elara.Application.Interfaces.Repository
         Task<Order> GetOrderAsync(Order order);
 
         Task<bool> ClearCartAsync(long cartId);
+        Task<bool> ClearCartForUserAsync(long? userId, string? guestSessionId);
         Task CreateTransactionAsync(Func<Task> action);
         Task UpdatePaymentTransactionIdAsync(long paymentId, string transactionId);
         Task UpdateStockAsync(IEnumerable<CheckoutItemPreviewDto> checkoutItems);
