@@ -21,20 +21,19 @@ namespace Elara.Application.Services
             var promoCode = await _promoCodeRepository.GetByCodeAsync(code, cancellationToken);
 
             if (promoCode == null)
-                return Invalid("PROMO_NOT_FOUND", "This promo code does not exist.");
+                return Invalid("This promo code does not exist.");
 
             if (!promoCode.IsActive)
-                return Invalid("PROMO_INACTIVE", "This promo code is no longer active.");
+                return Invalid("This promo code is no longer active.");
 
             if (promoCode.ExpiryDate < DateTime.UtcNow)
-                return Invalid("PROMO_EXPIRED", "This promo code has expired.");
+                return Invalid("This promo code has expired.");
 
             if (promoCode.UsageLimit > 0 && promoCode.TimesUsed >= promoCode.UsageLimit)
-                return Invalid("PROMO_LIMIT_REACHED", "This promo code has reached its usage limit.");
+                return Invalid("This promo code has reached its usage limit.");
 
             if (orderSubTotal < promoCode.MinOrderAmount)
-                return Invalid("PROMO_MIN_ORDER_NOT_MET",
-                    $"A minimum order of {promoCode.MinOrderAmount:C} is required to use this code.");
+                return Invalid($"A minimum order of {promoCode.MinOrderAmount:C} is required to use this code.");
 
             var discount = promoCode.DiscountType == DiscountType.Percentage
                 ? orderSubTotal * (promoCode.DiscountValue / 100m)
@@ -50,16 +49,9 @@ namespace Elara.Application.Services
             };
         }
 
-        private static PromoCodeValidationResultDto Invalid(string errorCode, string message) => new()
-        {
-            IsValid = false,
-            ErrorCode = errorCode,
-            ErrorMessage = message
-        };
-
         public async Task<PromoCodeDetailsDto?> GetByCodeAsync(
-    string code,
-    CancellationToken cancellationToken = default)
+            string code,
+            CancellationToken cancellationToken = default)
         {
             var promoCode = await _promoCodeRepository.GetByCodeAsync(code, cancellationToken);
 
@@ -76,5 +68,11 @@ namespace Elara.Application.Services
                 IsActive = promoCode.IsActive
             };
         }
+
+        private static PromoCodeValidationResultDto Invalid(string message) => new()
+        {
+            IsValid = false,
+            ErrorMessage = message
+        };
     }
 }

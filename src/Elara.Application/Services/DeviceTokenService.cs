@@ -46,17 +46,16 @@ namespace Elara.Application.Services
             var existing = await _repository.GetByTokenAsync(token, cancellationToken);
 
             if (existing == null)
-                return Invalid("DEVICE_NOT_FOUND", "This device token is not registered.");
+                return Invalid("This device token is not registered.");
 
             await _repository.DeactivateAsync(token, cancellationToken);
 
             return new RegisterDeviceResultDto { IsSuccess = true };
         }
 
-        private static RegisterDeviceResultDto Invalid(string errorCode, string message) => new()
+        private static RegisterDeviceResultDto Invalid(string message) => new()
         {
             IsSuccess = false,
-            ErrorCode = errorCode,
             ErrorMessage = message
         };
     }

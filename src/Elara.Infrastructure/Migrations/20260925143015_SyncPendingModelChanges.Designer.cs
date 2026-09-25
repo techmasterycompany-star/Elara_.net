@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Elara.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260925142740_SyncPendingModelChanges")]
+    [Migration("20260925143015_SyncPendingModelChanges")]
     partial class SyncPendingModelChanges
     {
         /// <inheritdoc />

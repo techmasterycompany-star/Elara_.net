@@ -31,7 +31,7 @@ namespace Elara.API.Exceptions
             {
                 Status = status,
                 Title = title,
-                Detail = context.RequestServices.GetRequiredService<IHostEnvironment>().IsDevelopment() ? exception.Message : null,
+                Detail = exception.Message,
                 Instance = context.Request.Path
             };
 

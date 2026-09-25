@@ -39,7 +39,6 @@ namespace Elara.Infrastructure.Services.Payment
                     {
                         { "order_id", request.OrderId.ToString() }
                     },
-                    ReturnUrl = request.ReturnUrl,
                     SetupFutureUsage = "off_session"
                 };
 
