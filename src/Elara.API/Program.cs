@@ -1,9 +1,12 @@
 using DotNetEnv;
 using Elara.API.Exceptions;
+using Elara.API.Filters;
+using Elara.API.Middleware;
 using Elara.Application;
 using Elara.Application.Interfaces.Repository.Auth;
 using Elara.Infrastructure;
 using Elara.Infrastructure.Data;
+using Elara.Infrastructure.Data.Seed;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -12,7 +15,7 @@ using Microsoft.OpenApi;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using System.Text.Json.Serialization;
-using Elara.API.Filters;
+//using Elara.API.Filters;
 using Elara.Infrastructure.Options;
 
 // .ENV (optional - local development only)
@@ -132,6 +135,7 @@ builder.Services
         };
     });
 
+
 builder.Services.AddAuthorization();
 
 builder.Services.AddRateLimiter(options =>
@@ -180,6 +184,14 @@ builder.Services
     .ValidateOnStart();
 
 var app = builder.Build();
+
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await MarketingDataSeeder.SeedAsync(context);
+}
 
 using (var scope = app.Services.CreateScope())
 {

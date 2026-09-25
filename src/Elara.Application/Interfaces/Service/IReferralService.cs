@@ -14,5 +14,11 @@ namespace Elara.Application.Interfaces
         Task<List<ReferralHistoryDto>> GetHistoryAsync(
             long referrerUserId,
             CancellationToken cancellationToken = default);
+
+        Task<InviteFriendResultDto> InviteFriendAsync(
+            long senderUserId,
+            string senderName,
+            string friendEmail,
+            CancellationToken cancellationToken = default);
     }
 }

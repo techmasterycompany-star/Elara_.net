@@ -35,7 +35,7 @@ namespace Elara.Application.Services
         {
             var existing = await _languageRepository.GetByCodeAsync(request.Code, cancellationToken);
             if (existing != null)
-                return Invalid("LANGUAGE_CODE_EXISTS", "A language with this code already exists.");
+                return Invalid("A language with this code already exists.");
 
             var language = new Language
             {
@@ -53,7 +53,7 @@ namespace Elara.Application.Services
         {
             var language = await _languageRepository.GetByIdAsync(id, cancellationToken);
             if (language == null)
-                return Invalid("LANGUAGE_NOT_FOUND", "This language does not exist.");
+                return Invalid("This language does not exist.");
 
             language.IsActive = request.IsActive;
             language.IsDefault = request.IsDefault;
@@ -101,16 +101,15 @@ namespace Elara.Application.Services
         {
             var resourceString = await _resourceStringRepository.GetByIdAsync(id, cancellationToken);
             if (resourceString == null)
-                return Invalid("RESOURCE_STRING_NOT_FOUND", "This resource string does not exist.");
+                return Invalid("This resource string does not exist.");
 
             await _resourceStringRepository.DeleteAsync(resourceString, cancellationToken);
             return new OperationResultDto { IsSuccess = true };
         }
 
-        private static OperationResultDto Invalid(string errorCode, string message) => new()
+        private static OperationResultDto Invalid(string message) => new()
         {
             IsSuccess = false,
-            ErrorCode = errorCode,
             ErrorMessage = message
         };
     }

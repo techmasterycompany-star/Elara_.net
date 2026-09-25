@@ -1,4 +1,5 @@
-﻿using Elara.Application.Interfaces.Repository;
+﻿using Elara.Application.Interfaces;
+using Elara.Application.Interfaces.Repository;
 using Elara.Application.Interfaces.Repository.Auth;
 using Elara.Application.Interfaces.Service;
 using Elara.Application.Interfaces.Service.Auth;
@@ -22,6 +23,31 @@ namespace Elara.Infrastructure
             {
                 options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"));
             });
+
+            // PromoCodes
+            services.AddScoped<IPromoCodeRepository, PromoCodeRepository>();
+
+            // Loyalty
+            services.AddScoped<ITransactionRepository, TransactionRepository>();
+
+            // Referrals
+            services.AddScoped<IReferralRepository, ReferralRepository>();
+
+            // Newsletter
+            services.AddScoped<INewsletterSubscriptionRepository, NewsletterSubscriptionRepository>();
+          
+
+            // Push Notifications
+            services.AddScoped<IDeviceTokenRepository, DeviceTokenRepository>();
+           
+
+            // Localization
+            services.AddScoped<ILanguageRepository, LanguageRepository>();
+            services.AddScoped<IResourceStringRepository, ResourceStringRepository>();
+
+            
+
+
 
             services.AddScoped<DbSeeder>();
             services.AddScoped<IPasswordHasher, PasswordHasher>();

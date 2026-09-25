@@ -25,7 +25,7 @@ namespace Elara.Application.Services
             if (existing != null)
             {
                 if (existing.IsSubscribed)
-                    return Invalid("ALREADY_SUBSCRIBED", "This email is already subscribed.");
+                    return Invalid("This email is already subscribed.");
 
                 existing.IsSubscribed = true;
                 existing.SubscribedAt = DateTime.UtcNow;
@@ -51,7 +51,7 @@ namespace Elara.Application.Services
             var existing = await _repository.GetByEmailAsync(email, cancellationToken);
 
             if (existing == null || !existing.IsSubscribed)
-                return Invalid("NOT_SUBSCRIBED", "This email is not currently subscribed.");
+                return Invalid("This email is not currently subscribed.");
 
             existing.IsSubscribed = false;
             existing.UnsubscribedAt = DateTime.UtcNow;
@@ -96,10 +96,9 @@ namespace Elara.Application.Services
             };
         }
 
-        private static SubscribeResultDto Invalid(string errorCode, string message) => new()
+        private static SubscribeResultDto Invalid(string message) => new()
         {
             IsSuccess = false,
-            ErrorCode = errorCode,
             ErrorMessage = message
         };
     }

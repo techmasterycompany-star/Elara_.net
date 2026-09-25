@@ -1,5 +1,6 @@
 ﻿using Elara.Application.DTOs;
 using Elara.Application.Interfaces;
+using Elara.Application.Interfaces.Service;
 using Elara.Domain.Entities;
 using Elara.Domain.Enums;
 
@@ -9,10 +10,14 @@ namespace Elara.Application.Services
     {
         private const int SignupRewardPoints = 50;
         private readonly IReferralRepository _referralRepository;
+        private readonly IEmailCampaignSender _emailSender;
 
-        public ReferralService(IReferralRepository referralRepository)
+        public ReferralService(
+            IReferralRepository referralRepository,
+            IEmailCampaignSender emailSender)
         {
             _referralRepository = referralRepository;
+            _emailSender = emailSender;
         }
 
         public ReferralCodeDto GetMyCode(long userId)
@@ -23,6 +28,33 @@ namespace Elara.Application.Services
             };
         }
 
+        public async Task<InviteFriendResultDto> InviteFriendAsync(
+            long senderUserId,
+            string senderName,
+            string friendEmail,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(friendEmail) || !friendEmail.Contains('@'))
+                return new InviteFriendResultDto
+                {
+                    IsSuccess = false
+                };
+
+            var code = EncodeUserId(senderUserId);
+
+            var subject = $"{senderName} invited you to join Elara!";
+            var body = $"""
+                <p>Hi there,</p>
+                <p><strong>{senderName}</strong> thinks you'd love Elara and wants to invite you to join.</p>
+                <p>Sign up using referral code <strong>{code}</strong> and you'll both earn reward points once you complete your first order.</p>
+                <p>See you soon!</p>
+                """;
+
+            await _emailSender.SendAsync(new List<string> { friendEmail }, subject, body, cancellationToken);
+
+            return new InviteFriendResultDto { IsSuccess = true };
+        }
+
         public async Task<ApplyReferralResultDto> ApplyAsync(
             long referredUserId,
             string code,
@@ -31,14 +63,14 @@ namespace Elara.Application.Services
             var referrerUserId = DecodeUserId(code);
 
             if (referrerUserId == null)
-                return Invalid("REFERRAL_CODE_INVALID", "This referral code is invalid.");
+                return Invalid("This referral code is invalid.");
 
             if (referrerUserId == referredUserId)
-                return Invalid("REFERRAL_SELF_NOT_ALLOWED", "You cannot use your own referral code.");
+                return Invalid("You cannot use your own referral code.");
 
             var existing = await _referralRepository.GetByReferredUserIdAsync(referredUserId, cancellationToken);
             if (existing != null)
-                return Invalid("REFERRAL_ALREADY_USED", "A referral code has already been applied to this account.");
+                return Invalid("A referral code has already been applied to this account.");
 
             var referral = new Referral
             {
@@ -51,9 +83,6 @@ namespace Elara.Application.Services
             };
 
             await _referralRepository.AddAsync(referral, cancellationToken);
-
-            // NOTE: once the Loyalty module exists, call into it here to actually
-            // credit SignupRewardPoints to the referrer as a Transaction (Earned).
 
             return new ApplyReferralResultDto
             {
@@ -80,7 +109,7 @@ namespace Elara.Application.Services
         private static string EncodeUserId(long userId)
         {
             var obfuscated = (userId * 7919) + 104729;
-            return "REF" + Convert.ToString(obfuscated, 36).ToUpperInvariant();
+            return "REF" + obfuscated.ToString("X");
         }
 
         private static long? DecodeUserId(string code)
@@ -91,7 +120,7 @@ namespace Elara.Application.Services
             try
             {
                 var raw = code[3..];
-                var obfuscated = Convert.ToInt64(raw, 36);
+                var obfuscated = Convert.ToInt64(raw, 16);
                 var userId = (obfuscated - 104729) / 7919;
                 return userId;
             }
@@ -101,10 +130,9 @@ namespace Elara.Application.Services
             }
         }
 
-        private static ApplyReferralResultDto Invalid(string errorCode, string message) => new()
+        private static ApplyReferralResultDto Invalid(string message) => new()
         {
             IsSuccess = false,
-            ErrorCode = errorCode,
             ErrorMessage = message
         };
     }
