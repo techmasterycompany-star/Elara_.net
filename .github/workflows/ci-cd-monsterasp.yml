@@ -90,13 +90,17 @@ jobs:
           import os, json
           p = './deploy-package/appsettings.Production.json'
           with open(p) as f: cfg = json.load(f)
+          injected, missing = [], []
           def setv(path, env):
               v = os.environ.get(env, '')
-              if not v: return
               node = cfg
               *heads, last = path.split('.')
               for h in heads: node = node.setdefault(h, {})
+              if not v:
+                  missing.append(path + ' (kept file value)')
+                  return
               node[last] = v
+              injected.append(path)
           setv('Jwt.Key', 'JWT_KEY')
           setv('ConnectionStrings.DefaultConnection', 'DB_CONNECTION')
           setv('Cloudinary.CloudName', 'CLOUDINARY_CLOUD_NAME')
@@ -112,7 +116,8 @@ jobs:
           setv('PayPal.ClientId', 'PAYPAL_CLIENT_ID')
           setv('PayPal.ClientSecret', 'PAYPAL_CLIENT_SECRET')
           with open(p, 'w') as f: json.dump(cfg, f, indent=2)
-          print('Secrets injected (only non-empty ones).')
+          print('Injected from GitHub Secrets: ' + (', '.join(injected) if injected else '(none)'))
+          print('Missing secrets, kept file value: ' + (', '.join(missing) if missing else '(none)'))
           "
 
       - name: Copy web.config for IIS
