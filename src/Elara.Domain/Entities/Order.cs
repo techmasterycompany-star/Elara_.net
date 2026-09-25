@@ -7,6 +7,7 @@ namespace Elara.Domain.Entities
     {
         public long? UserId { get; set; }
         public User? User { get; set; }
+        public string? GuestSessionId { get; set; }
 
         public string? GuestFullName { get; set; }
         public string? GuestEmail { get; set; }

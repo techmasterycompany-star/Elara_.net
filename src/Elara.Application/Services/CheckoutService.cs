@@ -111,6 +111,7 @@ namespace Elara.Application.Services
             var order = new Order
             {
                 UserId = userId,
+                GuestSessionId = userId.HasValue ? null : guestSessionId,
                 GuestFullName = userId.HasValue ? null : request.ShippingAddress.FullName,
                 GuestPhoneNumber = userId.HasValue ? null : request.ShippingAddress.Phone,
                 ShippingFullName = request.ShippingAddress.FullName,
@@ -167,7 +168,6 @@ namespace Elara.Application.Services
                     throw new BadRequestException("An order is already in progress for this user.");
                 }
                 createdOrder = await _checkoutRepository.CreateOrderAsync(order);
-                await _checkoutRepository.UpdateStockAsync(checkoutItems);
             });
 
             await _shipmentService.CreateShipmentsForOrderAsync(createdOrder!.Id);
@@ -182,8 +182,6 @@ namespace Elara.Application.Services
                 PayPalEmail = request.PayPalEmail,
                 CardDetails = request.CardDetails
             });
-
-            await _checkoutRepository.ClearCartAsync(request.CartId.Value);
 
             return new CheckoutResponse
             {
