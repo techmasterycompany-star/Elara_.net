@@ -43,6 +43,9 @@ services:
       - Email__Smtp__Port=${EMAIL_SMTP_PORT}
       - Email__Smtp__Username=${EMAIL_SMTP_USERNAME}
       - Email__Smtp__Password=${EMAIL_SMTP_PASSWORD}
+      - Stripe__SecretKey=${STRIPE_SECRET_KEY}
+      - Stripe__PublishableKey=${STRIPE_PUBLISHABLE_KEY}
+      - Stripe__WebhookSecret=${STRIPE_WEBHOOK_SECRET}
     depends_on:
       db:
         condition: service_healthy
