@@ -2,6 +2,7 @@
 using Elara.Application.DTOs.Order;
 using Elara.Application.Interfaces.Repository;
 using Elara.Domain.Entities;
+using Elara.Domain.Enums;
 using Elara.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,7 +21,7 @@ namespace Elara.Infrastructure.Repositories
         {
             var orders = _context.Orders
                 .AsNoTracking()
-                .Where(o => !o.IsDeleted && o.Items.Any(i => i.Product.SellerProfileId == sellerProfileId))
+                .Where(o => !o.IsDeleted && o.Items.Any(i => i.Product.SellerProfileId == sellerProfileId) && o.Status != OrderStatus.Pending)
                 .Include(o => o.Items.Where(i => i.Product.SellerProfileId == sellerProfileId))
                     .ThenInclude(i => i.Product)
                 .AsQueryable();

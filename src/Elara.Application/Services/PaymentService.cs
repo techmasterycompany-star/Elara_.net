@@ -195,7 +195,7 @@ namespace Elara.Application.Services
 
         private async Task<PaymentResponseDto> ProcessCodPaymentAsync(Payment payment, PaymentRequestDto request)
         {
-            payment.Status = PaymentStatus.Completed;
+            payment.Status = PaymentStatus.Pending;
             payment.Provider = "COD";
             payment.PaidAt = DateTime.UtcNow;
             payment.UpdatedAt = DateTime.UtcNow;
@@ -204,7 +204,7 @@ namespace Elara.Application.Services
             if (order == null)
                 throw new NotFoundException("Order not found");
 
-            await CompleteOrderAsync(order, payment);
+            await ConfirmOrderAsync(order, payment);
 
             return new PaymentResponseDto
             {
@@ -242,7 +242,7 @@ namespace Elara.Application.Services
             if (order == null)
                 throw new NotFoundException("Order not found");
 
-            await CompleteOrderAsync(order, payment);
+            await ConfirmOrderAsync(order, payment);
 
             return new PaymentResponseDto
             {
@@ -260,10 +260,13 @@ namespace Elara.Application.Services
             };
         }
 
-        private async Task CompleteOrderAsync(Order order, Payment payment)
+        private async Task ConfirmOrderAsync(Order order, Payment payment)
         {
             if (order.Status == OrderStatus.Confirmed)
                 return;
+
+            if (order.Status != OrderStatus.Pending)
+                throw new ConflictException($"Order cannot be confirmed when its status is {order.Status}.");
 
             await _checkoutRepository.UpdateStockAsync(order.Items.Select(item => new CheckoutItemPreviewDto
             {
@@ -283,7 +286,7 @@ namespace Elara.Application.Services
             {
                 OrderId = order.Id,
                 Status = OrderStatus.Confirmed.ToString(),
-                Notes = "Order confirmed after successful payment.",
+                Notes = "Order confirmed after successful payment. or COD order placement.",
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             });
@@ -329,7 +332,7 @@ namespace Elara.Application.Services
                     payment.Status = PaymentStatus.Completed;
                     payment.PaidAt = DateTime.UtcNow;
 
-                    await CompleteOrderAsync(order, payment);
+                    await ConfirmOrderAsync(order, payment);
 
                 }
             }
