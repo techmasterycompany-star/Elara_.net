@@ -37,23 +37,14 @@ namespace Elara.API.Controllers.Seller
             return Ok(ApiResponse<SellerShipmentDetailsDto>.SuccessResponse(result));
         }
 
-        [HttpPost("orders/{orderId:long}/shipments")]
-        public async Task<IActionResult> CreateShipment(long orderId, [FromBody] CreateSellerShipmentDto dto)
-        {
-            var userId = ClaimsHelper.GetAuthenticatedUserId(User);
-            var result = await _shipmentService.CreateSellerShipmentAsync(orderId, userId, dto);
-
-            return CreatedAtAction(nameof(GetShipment), new { shipmentId = result.Id }, ApiResponse<SellerShipmentDetailsDto>.SuccessResponse(result));
-        }
-
-        [HttpPatch("shipments/{shipmentId:long}")]
-        public async Task<IActionResult> UpdateShipment(long shipmentId, [FromBody] UpdateSellerShipmentDto dto)
+        [HttpPatch("shipments/{shipmentId:long}/ship")]
+        public async Task<IActionResult> ShipShipment(long shipmentId, [FromBody] ShipSellerShipmentDto dto)
         {
             var userId = ClaimsHelper.GetAuthenticatedUserId(User);
 
-            await _shipmentService.UpdateSellerShipmentAsync(shipmentId, userId, dto);
+            await _shipmentService.ShipSellerShipmentAsync(shipmentId, userId, dto);
 
-            return Ok(ApiResponse<string>.SuccessResponse("Shipment updated successfully."));
+            return Ok(ApiResponse<string>.SuccessResponse("Shipment marked as shipped successfully."));
         }
     }
 }

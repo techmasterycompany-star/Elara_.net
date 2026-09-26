@@ -12,8 +12,7 @@ namespace Elara.Application.Interfaces.Service
         Task UpdateShipmentAsync(long shipmentId, AdminUpdateShipmentRequestDto request);
         Task<PaginatedResponse<SellerShipmentListDto>> GetSellerShipmentsAsync(long userId, SellerShipmentQuery query);
         Task<SellerShipmentDetailsDto> GetSellerShipmentByIdAsync(long shipmentId, long userId);
-        Task<SellerShipmentDetailsDto> CreateSellerShipmentAsync(long orderId, long userId, CreateSellerShipmentDto dto);
-        Task UpdateSellerShipmentAsync(long shipmentId, long userId, UpdateSellerShipmentDto dto);
+        Task ShipSellerShipmentAsync(long shipmentId, long userId, ShipSellerShipmentDto dto);
         Task<IEnumerable<CustomerShipmentListDto>> GetCustomerShipmentsByOrderIdAsync(long orderId, long userId);
         Task<CustomerShipmentDetailsDto> GetCustomerShipmentByIdAsync(long orderId, long shipmentId, long userId);
     }

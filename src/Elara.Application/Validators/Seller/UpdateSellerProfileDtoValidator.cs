@@ -15,5 +15,5 @@ namespace Elara.Application.Validators.Seller
                 .NotEmpty().WithMessage("Store description is required.")
                 .MaximumLength(1000).WithMessage("Store description must not exceed 1000 characters.");
         }
-}
+    }
 }
