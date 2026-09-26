@@ -10,7 +10,7 @@ using Elara.Domain.Enums;
 
 namespace Elara.Application.Services
 {
-    internal class SellerService : ISellerService
+    public class SellerService : ISellerService
     {
         private readonly ISellerApplicationRepository _sellerApplicationRepository;
         private readonly ISellerRepository _sellerRepository;
