@@ -15,7 +15,8 @@ namespace Elara.Infrastructure.Data.Configurations
                 .HasMaxLength(50);
 
             builder.HasIndex(pc => pc.Code)
-                .IsUnique();
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
 
             builder.Property(pc => pc.DiscountValue)
                 .HasColumnType("decimal(18,2)");
