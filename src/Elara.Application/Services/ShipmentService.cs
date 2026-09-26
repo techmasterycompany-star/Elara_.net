@@ -49,7 +49,7 @@ namespace Elara.Application.Services
 
             return _mapper.Map<AdminShipmentDetailsDto>(shipment);
         }
-
+      
         public async Task CreateShipmentsForOrderAsync(long orderId)
         {
             var order = await _orderRepository.GetOrderByIdAsync(orderId);
@@ -175,7 +175,7 @@ namespace Elara.Application.Services
             if (order == null)
                 throw new NotFoundException("Order not found.");
 
-            if (order.Status is OrderStatus.Cancelled or OrderStatus.Delivered)
+            if (order.Status == OrderStatus.Cancelled)
                 return;
 
             var shipments = await _shipmentRepository.GetShipmentsByOrderIdAsync(orderId);
@@ -183,43 +183,58 @@ namespace Elara.Application.Services
             if (shipments.Count == 0)
                 return;
 
-            var newStatus = GetOrderStatusFromShipments(order.Status, shipments);
+            var activeShipments = shipments
+                .Where(s => !s.IsDeleted && s.Status != ShipmentStatus.Returned)
+                .ToList();
 
-            if (newStatus == order.Status)
+            if (activeShipments.Count == 0)
                 return;
-            
-            order.Status = newStatus;
-            
-            var now = DateTime.UtcNow;
-            
-            order.StatusHistory.Add(new OrderStatusHistory
+
+            OrderStatus? newStatus = null;
+
+            if (activeShipments.All(s => s.Status == ShipmentStatus.Delivered))
             {
-                OrderId = orderId,
-                Status = newStatus.ToString(),
-                Notes = "Status updated automatically based on shipment statuses.",
-                CreatedAt = now,
-                UpdatedAt = now
-            });
+                newStatus = OrderStatus.Delivered;
+            }
+            else if (order.Status == OrderStatus.Confirmed &&
+                     activeShipments.All(s => s.Status is ShipmentStatus.Shipped or ShipmentStatus.InTransit or ShipmentStatus.Delivered))
+            {
+                newStatus = OrderStatus.Shipped;
+            }
+
+            if (newStatus.HasValue && newStatus.Value != order.Status)
+            {
+                order.Status = newStatus.Value;
+
+                var now = DateTime.UtcNow;
+
+                order.StatusHistory.Add(new OrderStatusHistory
+                {
+                    OrderId = orderId,
+                    Status = newStatus.Value.ToString(),
+                    Notes = "Order status updated automatically based on shipment statuses.",
+                    CreatedAt = now,
+                    UpdatedAt = now
+                });
+
+                order.UpdatedAt = now;
+            }
+
+            if (order.Status == OrderStatus.Delivered &&
+                order.Payment != null &&
+                order.Payment.Method == PaymentMethodType.CashOnDelivery &&
+                order.Payment.Status == PaymentStatus.Pending)
+            {
+                order.Payment.Status = PaymentStatus.Completed;
+                order.Payment.PaidAt = DateTime.UtcNow;
+                order.Payment.UpdatedAt = DateTime.UtcNow;
+            }
 
             await _orderRepository.UpdateOrderAsync(order);
         }
 
-        private static OrderStatus GetOrderStatusFromShipments(OrderStatus currentStatus, List<Shipment> shipments)
-        {
-            var activeShipments = shipments.Where(s => s.Status != ShipmentStatus.Returned).ToList();
 
-            if (activeShipments.Count == 0)
-                return currentStatus;
-
-            if (activeShipments.All(s => s.Status == ShipmentStatus.Delivered))
-                return OrderStatus.Delivered;
-
-            if (currentStatus == OrderStatus.Confirmed && activeShipments.All(s => s.Status is ShipmentStatus.Shipped or ShipmentStatus.InTransit or ShipmentStatus.Delivered))
-                return OrderStatus.Shipped;
-
-            return currentStatus;
-        }
-
+        // Seller-specific methods
         public async Task<PaginatedResponse<SellerShipmentListDto>> GetSellerShipmentsAsync(long userId, SellerShipmentQuery query)
         {
             var sellerProfile = await _sellerRepository.GetByUserIdAsync(userId);
@@ -239,7 +254,6 @@ namespace Elara.Application.Services
                 TotalPages = (int)Math.Ceiling((double)shipments.TotalCount / query.Limit)
             };
         }
-
         public async Task<SellerShipmentDetailsDto> GetSellerShipmentByIdAsync(long shipmentId, long userId)
         {
             var sellerProfile = await _sellerRepository.GetByUserIdAsync(userId);
@@ -254,82 +268,7 @@ namespace Elara.Application.Services
 
             return _mapper.Map<SellerShipmentDetailsDto>(shipment);
         }
-
-        public async Task<SellerShipmentDetailsDto> CreateSellerShipmentAsync(long orderId, long userId, CreateSellerShipmentDto dto)
-        {
-            var sellerProfile = await _sellerRepository.GetByUserIdAsync(userId);
-
-            if (sellerProfile == null)
-                throw new NotFoundException("Seller profile not found.");
-
-            if (dto.Items == null || dto.Items.Count == 0)
-                throw new ValidationException("Shipment must contain at least one item.");
-
-            if (dto.Items.GroupBy(i => i.OrderItemId).Any(g => g.Count() > 1))
-                throw new ValidationException("An order item cannot appear more than once in a shipment.");
-
-            var order = await _orderRepository.GetSellerOrderDetailsAsync(orderId, sellerProfile.Id);
-
-            if (order == null)
-                throw new NotFoundException("Order not found.");
-
-            if (order.Status == OrderStatus.Cancelled)
-                throw new ConflictException("Cannot create a shipment for a cancelled order.");
-
-            if (order.Status == OrderStatus.Delivered)
-                throw new ConflictException("Cannot create a shipment for a delivered order.");
-
-            //if (order.Status != OrderStatus.Confirmed)
-            //    throw new ConflictException("Shipments can only be created for confirmed orders.");
-
-            var orderItems = order.Items.ToDictionary(i => i.Id);
-            var shipmentItems = new List<ShipmentItem>();
-
-            foreach (var requestItem in dto.Items)
-            {
-                if (!orderItems.TryGetValue(requestItem.OrderItemId, out var orderItem))
-                    throw new NotFoundException($"Order item {requestItem.OrderItemId} not found.");
-
-                if (requestItem.Quantity <= 0)
-                    throw new ValidationException("Shipment quantity must be greater than zero.");
-
-                var alreadyShipped = orderItem.ShipmentItems
-                    .Where(i => !i.Shipment.IsDeleted && i.Shipment.Status != ShipmentStatus.Returned)
-                    .Sum(i => i.Quantity);
-
-                var remainingQuantity = orderItem.Quantity - alreadyShipped;
-
-                if (remainingQuantity <= 0)
-                    throw new ConflictException($"Order item {requestItem.OrderItemId} has already been fully shipped.");
-
-                if (requestItem.Quantity > remainingQuantity)
-                    throw new ConflictException($"Shipment quantity exceeds the remaining quantity for order item {requestItem.OrderItemId}.");
-
-                shipmentItems.Add(new ShipmentItem
-                {
-                    OrderItemId = requestItem.OrderItemId,
-                    Quantity = requestItem.Quantity
-                });
-            }
-
-            var shipment = new Shipment
-            {
-                OrderId = orderId,
-                SellerProfileId = sellerProfile.Id,
-                Carrier = dto.Carrier,
-                TrackingNumber = dto.TrackingNumber,
-                Status = ShipmentStatus.Pending,
-                EstimatedDeliveryDate = dto.EstimatedDeliveryDate,
-                Items = shipmentItems
-            };
-
-            await _shipmentRepository.AddAsync(shipment);
-            await _shipmentRepository.SaveChangesAsync();
-
-            return _mapper.Map<SellerShipmentDetailsDto>(shipment);
-        }
-
-        public async Task UpdateSellerShipmentAsync(long shipmentId, long userId, UpdateSellerShipmentDto dto)
+        public async Task ShipSellerShipmentAsync(long shipmentId, long userId, ShipSellerShipmentDto dto)
         {
             var sellerProfile = await _sellerRepository.GetByUserIdAsync(userId);
 
@@ -341,28 +280,31 @@ namespace Elara.Application.Services
             if (shipment == null)
                 throw new NotFoundException("Shipment not found.");
 
-            if (dto.Carrier != null)
-                shipment.Carrier = dto.Carrier;
+            if (shipment.Status != ShipmentStatus.Pending)
+                throw new ConflictException($"Shipment cannot be shipped when its status is {shipment.Status}.");
 
-            if (dto.TrackingNumber != null)
-                shipment.TrackingNumber = dto.TrackingNumber;
+            var order = await _orderRepository.GetOrderByIdAsync(shipment.OrderId);
 
-            if (dto.EstimatedDeliveryDate.HasValue)
-                shipment.EstimatedDeliveryDate = dto.EstimatedDeliveryDate;
+            if (order == null)
+                throw new NotFoundException("Order not found.");
 
-            var statusChanged = dto.Status.HasValue && dto.Status.Value != shipment.Status;
+            if (order.Status == OrderStatus.Cancelled)
+                throw new ConflictException("Cannot ship a cancelled order.");
 
-            if (statusChanged)
-                await ChangeShipmentStatusAsync(shipment, dto.Status!.Value);
+            if (order.Status == OrderStatus.Pending)
+                throw new ConflictException("Shipment can only be shipped after the order is confirmed.");
 
-            shipment.UpdatedAt = DateTime.UtcNow;
+            shipment.Carrier = dto.Carrier;
+            shipment.TrackingNumber = dto.TrackingNumber;
+            shipment.EstimatedDeliveryDate = dto.EstimatedDeliveryDate;
+
+            await ChangeShipmentStatusAsync(shipment, ShipmentStatus.Shipped);
 
             await _shipmentRepository.UpdateShipmentAsync(shipment);
 
-            if (statusChanged)
-                await UpdateOrderStatusBasedOnShipmentsAsync(shipment.OrderId);
+            await UpdateOrderStatusBasedOnShipmentsAsync(shipment.OrderId);
         }
-
+        // Customer-specific methods
         public async Task<IEnumerable<CustomerShipmentListDto>> GetCustomerShipmentsByOrderIdAsync(long orderId, long userId)
         {
             var order = await _orderRepository.GetCustomerOrderDetailsAsync(orderId, userId);
@@ -374,7 +316,6 @@ namespace Elara.Application.Services
 
             return _mapper.Map<IEnumerable<CustomerShipmentListDto>>(shipments);
         }
-
         public async Task<CustomerShipmentDetailsDto> GetCustomerShipmentByIdAsync(long orderId, long shipmentId, long userId)
         {
             var shipment = await _shipmentRepository.GetCustomerShipmentByIdAsync(orderId, shipmentId, userId);
