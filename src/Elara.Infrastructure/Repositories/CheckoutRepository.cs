@@ -1,4 +1,5 @@
 using Elara.Application.DTOs.Checkout;
+using Elara.Application.Exceptions;
 using Elara.Application.Interfaces.Repository;
 using Elara.Domain.Entities;
 using Elara.Domain.Enums;
@@ -140,10 +141,16 @@ namespace Elara.Infrastructure.Repositories
         {
             foreach (var item in checkoutItems)
             {
-                var product = await _context.Products
-                    .FirstAsync(p => p.Id == item.ProductId);
+                var affected = await _context.Products
+                    .Where(p => p.Id == item.ProductId && p.StockQuantity >= item.Quantity)
+                    .ExecuteUpdateAsync(s =>
+                        s.SetProperty(
+                            p => p.StockQuantity,
+                            p => p.StockQuantity - item.Quantity
+                        ));
 
-                product.StockQuantity -= item.Quantity;
+                if (affected == 0)
+                    throw new BadRequestException($"Insufficient stock for product {item.ProductId}");
             }
 
             await _context.SaveChangesAsync();

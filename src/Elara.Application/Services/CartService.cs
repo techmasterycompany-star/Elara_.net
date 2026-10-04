@@ -122,7 +122,6 @@ namespace Elara.Application.Services
             if (cart == null)
                 throw new NotFoundException("Cart not found");
 
-            // Get cart item
             var cartItem = await _cartRepository.GetCartItemAsync(cart.Id, productId);
             if (cartItem == null)
                 throw new NotFoundException("Product not found in cart");
@@ -157,7 +156,6 @@ namespace Elara.Application.Services
             if (product.StockQuantity < quantity)
                 throw new BadRequestException($"Insufficient stock. Available: {product.StockQuantity}");
 
-            // Update quantity
             cartItem.Quantity = quantity;
             cartItem.UpdatedAt = DateTime.UtcNow;
 

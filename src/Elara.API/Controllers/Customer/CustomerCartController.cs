@@ -17,7 +17,6 @@ namespace Elara.API.Controllers.Customer
             _cartService = cartService;
         }
 
-        // Get all items in the customer's cart
         [HttpGet("items")]
         public async Task<IActionResult> GetCartItems()
         {
@@ -26,7 +25,6 @@ namespace Elara.API.Controllers.Customer
             return Ok(response);
         }
 
-        // Add a product to the customer's cart
         [HttpPost("items")]
         public async Task<IActionResult> AddToCart([FromBody] AddToCartDto addToCartDto)
         {
@@ -35,7 +33,6 @@ namespace Elara.API.Controllers.Customer
             return Ok(response);
         }
 
-        // Update the quantity of a cart item
         [HttpPatch("items/{productId}/quantity")]
         public async Task<IActionResult> UpdateCartItemQuantity(long productId, [FromBody] UpdateCartItemQuantityDto updateDto)
         {
@@ -44,7 +41,6 @@ namespace Elara.API.Controllers.Customer
             return Ok(response);
         }
 
-        // Remove a product from the customer's cart
         [HttpDelete("items/{productId}")]
         public async Task<IActionResult> RemoveFromCart(long productId)
         {
