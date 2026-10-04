@@ -17,7 +17,6 @@ namespace Elara.API.Controllers.Checkout
             _checkoutService = checkoutService;
         }
 
-        // Get list of available shipping methods
         [HttpGet("shipping-methods")]
         public async Task<IActionResult> GetShippingMethods()
         {
@@ -26,7 +25,6 @@ namespace Elara.API.Controllers.Checkout
             return Ok(response);
         }
 
-        // Preview checkout totals before placing order
         [HttpPost("checkout/preview")]
         public async Task<IActionResult> PreviewCheckout([FromBody] CheckoutPreviewRequest request)
         {
@@ -35,7 +33,6 @@ namespace Elara.API.Controllers.Checkout
             return Ok(response);
         }
 
-        // Process checkout and create order
         [HttpPost("checkout")]
         public async Task<IActionResult> ProcessCheckout([FromBody] CheckoutRequest request)
         {

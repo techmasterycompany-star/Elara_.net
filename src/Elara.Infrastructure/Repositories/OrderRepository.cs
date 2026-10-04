@@ -176,6 +176,7 @@ namespace Elara.Infrastructure.Repositories
 
         public async Task UpdateOrderAsync(Order order)
         {
+            _context.Orders.Update(order);
             await _context.SaveChangesAsync();
         }
 
@@ -236,7 +237,7 @@ namespace Elara.Infrastructure.Repositories
         public async Task<bool> HasUserPurchasedProductAsync(long userId, long productId)
         {
             return await _context.Orders
-                .Where(o => o.UserId == userId 
+                .Where(o => o.UserId == userId
                     && o.Status == Elara.Domain.Enums.OrderStatus.Delivered
                     && o.Items.Any(i => i.ProductId == productId)
                     && !o.IsDeleted)

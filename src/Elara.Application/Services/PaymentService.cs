@@ -325,33 +325,32 @@ namespace Elara.Application.Services
             payment.PaidAt = webhook.Status == PaymentStatus.Completed ? DateTime.UtcNow : payment.PaidAt;
             payment.UpdatedAt = DateTime.UtcNow;
 
-            if (webhook.Status == PaymentStatus.Completed)
+            await _checkoutRepository.CreateTransactionAsync(async () =>
             {
-                if (!wasPaymentCompleted)
+                if (webhook.Status == PaymentStatus.Completed)
                 {
-                    payment.Status = PaymentStatus.Completed;
-                    payment.PaidAt = DateTime.UtcNow;
-
-                    await ConfirmOrderAsync(order, payment);
-
+                    if (!wasPaymentCompleted)
+                    {
+                        await ConfirmOrderAsync(order, payment);
+                    }
                 }
-            }
-            else if (webhook.Status == PaymentStatus.Failed || webhook.Status == PaymentStatus.Cancelled)
-            {
-                order.Status = OrderStatus.Cancelled;
-                order.UpdatedAt = DateTime.UtcNow;
-                order.StatusHistory.Add(new OrderStatusHistory
+                else if (webhook.Status == PaymentStatus.Failed || webhook.Status == PaymentStatus.Cancelled)
                 {
-                    OrderId = order.Id,
-                    Status = OrderStatus.Cancelled.ToString(),
-                    Notes = "Order cancelled because the payment failed or was cancelled.",
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                });
-            }
+                    order.Status = OrderStatus.Cancelled;
+                    order.UpdatedAt = DateTime.UtcNow;
+                    order.StatusHistory.Add(new OrderStatusHistory
+                    {
+                        OrderId = order.Id,
+                        Status = OrderStatus.Cancelled.ToString(),
+                        Notes = "Order cancelled because the payment failed or was cancelled.",
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    });
+                }
 
-            await _paymentRepository.UpdateAsync(payment);
-            await _orderRepository.UpdateOrderAsync(order);
+                await _paymentRepository.UpdateAsync(payment);
+                await _orderRepository.UpdateOrderAsync(order);
+            });
 
             return MapToDto(payment);
         }

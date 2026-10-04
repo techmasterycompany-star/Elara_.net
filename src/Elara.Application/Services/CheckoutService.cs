@@ -37,10 +37,8 @@ namespace Elara.Application.Services
         public async Task<CheckoutPreviewResponse> PreviewCheckoutAsync(long? userId, string? guestSessionId, CheckoutPreviewRequest request)
         {
             await CheckAuthorizationAsync(userId, guestSessionId);
-            // Get checkout items
             var checkoutItems = await GetCheckoutItemsAsync(userId, guestSessionId, request.CartId);
 
-            // Validate shipping method
             var shippingMethod = await _checkoutRepository.GetShippingMethodByIdAsync(request.ShippingMethodId);
             if (shippingMethod == null)
                 throw new NotFoundException("Shipping method not found");
@@ -48,10 +46,8 @@ namespace Elara.Application.Services
             if (!shippingMethod.IsActive)
                 throw new BadRequestException("Shipping method is not available");
 
-            // Calculate subtotal
             decimal subtotal = checkoutItems.Sum(item => item.Subtotal);
 
-            // Calculate discount
             decimal discountAmount = 0m;
             string? appliedPromoCode = null;
 
@@ -160,6 +156,8 @@ namespace Elara.Application.Services
             order.Payment = payment;
 
             Order? createdOrder = null;
+            PaymentResponseDto? paymentResponse = null;
+
             await _checkoutRepository.CreateTransactionAsync(async () =>
             {
                 var existingOrder = await _checkoutRepository.GetOrderAsync(order);
@@ -168,19 +166,20 @@ namespace Elara.Application.Services
                     throw new BadRequestException("An order is already in progress for this user.");
                 }
                 createdOrder = await _checkoutRepository.CreateOrderAsync(order);
-            });
 
-            await _shipmentService.CreateShipmentsForOrderAsync(createdOrder!.Id);
+                await _shipmentService.CreateShipmentsForOrderAsync(createdOrder!.Id);
 
-            var paymentResponse = await _paymentService.ProcessPaymentAsync(new PaymentRequestDto
-            {
-                OrderId = createdOrder.Id,
-                PaymentMethod = request.PaymentMethod,
-                Amount = totalAmount,
-                ReturnUrl = request.ReturnUrl,
-                CancelUrl = request.CancelUrl,
-                PayPalEmail = request.PayPalEmail,
-                CardDetails = request.CardDetails
+                paymentResponse = await _paymentService.ProcessPaymentAsync(new PaymentRequestDto
+                {
+                    OrderId = createdOrder.Id,
+                    PaymentMethod = request.PaymentMethod,
+                    Amount = totalAmount,
+                    ReturnUrl = request.ReturnUrl,
+                    CancelUrl = request.CancelUrl,
+                    PayPalEmail = request.PayPalEmail,
+                    CardDetails = request.CardDetails
+                });
+
             });
 
             return new CheckoutResponse
@@ -207,7 +206,6 @@ namespace Elara.Application.Services
 
             if (cartId.HasValue)
             {
-                // Get items from cart
                 var cart = await _checkoutRepository.GetCartWithItemsAsync(cartId.Value, userId, guestSessionId);
                 if (cart == null)
                     throw new NotFoundException("Cart not found");
@@ -252,22 +250,18 @@ namespace Elara.Application.Services
             {
                 var product = products.FirstOrDefault(p => p.Id == item.ProductId);
 
-                // Validate product exists
                 if (product == null)
                     throw new NotFoundException($"Product {item.ProductId} not found");
 
-                // Validate product availability
                 if (product.IsDeleted)
                     throw new BadRequestException($"Product '{product.Name}' is no longer available");
 
                 if (!product.IsActive)
                     throw new BadRequestException($"Product '{product.Name}' is currently inactive");
 
-                // Validate stock availability
                 if (product.StockQuantity < item.Quantity)
                     throw new BadRequestException($"Insufficient stock for '{product.Name}'. Available: {product.StockQuantity}");
 
-                // Validate seller availability
                 if (product.SellerProfile == null || product.SellerProfile.IsDeleted)
                     throw new BadRequestException($"Seller for product '{product.Name}' is not available");
 
